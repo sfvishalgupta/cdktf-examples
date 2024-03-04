@@ -1,13 +1,30 @@
 name: cdk-testing-project-deployment
 run-name: ${{ github.actor }} cdktf testing project
-on: [ push ]
+on:
+  push:
+    branches: [ main ]
 jobs:
+  build:
+    name: setup aws credentials
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.POC_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.POC_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      - run: aws sts get-caller-identity
+      - name: List S3 Buckets
+        run: |
+          aws s3 ls
+
   check-bats-version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '18'
       - run: npm install -g bats
       - run: bats -v
