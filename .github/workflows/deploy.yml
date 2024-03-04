@@ -31,5 +31,6 @@ jobs:
           aws s3 ls
       - name: Deploy CDKTF Template
         run: |
+          ls -al |
           npm run deploy '*'
 
