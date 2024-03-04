@@ -1,4 +1,4 @@
-import {ILambda, ILambdaWithSqs} from "arc-cdk";
+import {ILambda, ILambdaWithApiGateway, ILambdaWithSqs} from "arc-cdk";
 import {resolve} from "path";
 import {S3BackendConfig} from "cdktf";
 import * as aws from "@cdktf/provider-aws";
@@ -41,7 +41,7 @@ export  const LambdaWithCodeInS3Config: ILambda = {
     handler: 'printEnv.handler',
     runtime: 'nodejs18.x',
     memorySize: 256,
-    timeout: 30,
+    timeout: 6,
     namespace: process.env.NAMESPACE || '',
     environment: process.env.ENVIRONMENT || '',
     publish: true,
@@ -58,7 +58,7 @@ export const LambdaWithVersioningConfig: ILambda={
     handler: 'printEnv.handler',
     runtime: 'nodejs18.x',
     memorySize: 256,
-    timeout: 30,
+    timeout: 6,
     namespace: process.env.NAMESPACE || '',
     environment: process.env.ENVIRONMENT || '',
     publish: true,
@@ -68,6 +68,24 @@ export const LambdaWithVersioningConfig: ILambda={
     },
     tags,
 }
+
+export const lambdaWithApiGatewayConfig: ILambdaWithApiGateway={
+    name: `${process.env.LAMBDA_NAME}-with-api-gateway`,
+    codePath: resolve(__dirname, '../dist/'),
+    handler: 'printEnv.handler',
+    runtime: 'nodejs18.x',
+    memorySize: 256,
+    timeout: 6,
+    namespace: process.env.NAMESPACE || '',
+    environment: process.env.ENVIRONMENT || '',
+    publish: true,
+    envVars: {
+        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
+        "test": "test"
+    },
+    tags,
+}
+
 export const LambdaConfig: ILambda = {
     name: process.env.LAMBDA_NAME!,
     codePath: resolve(__dirname, '../dist/'),

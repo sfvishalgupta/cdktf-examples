@@ -90,4 +90,21 @@ lambdaWithSQSConfig.vpcConfig = {
 
 /** CodeBuild Project **/
 // new Stacks.CodebuildStack(app, "MyCodeBuildStack", Config.CodeBuildConfig);
+
+/** Lambda with API Gateway **/
+// const lambdaWithApiGatewayConfig: any = Config.lambdaWithApiGatewayConfig;
+// lambdaVersioningConfig.roleArn = IamRoleStack.iamRole!.arn;
+// lambdaVersioningConfig.vpcConfig = {
+//     securityGroupIds: [vpcStack.securityGroup.id],
+//     subnetIds: [
+//         vpcStack.publicSubnet1.id,
+//         vpcStack.publicSubnet2.id,
+//         vpcStack.privateSubnet1.id,
+//         vpcStack.privateSubnet2.id
+//     ]
+// }
+// new Stacks.LambdaWithApiGatewayStack(app,
+//     "MyLambdaWithAPIGatewayStack",
+//     lambdaWithApiGatewayConfig
+// );
 app.synth();
