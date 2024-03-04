@@ -12,7 +12,7 @@ jobs:
         with:
           node-version: '18'
       - run: npm install -g bats
-      - run: bats -v | ls -al
+      - run: bats -v | ls -al | npm install
 
 
   build:
