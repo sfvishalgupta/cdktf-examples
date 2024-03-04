@@ -12,7 +12,7 @@ jobs:
         with:
           node-version: '18'
       - run: npm install -g bats
-      - run: cat ${{ secrets.POC_ACCESS_KEY }}
+      - run: echo ${{ secrets.POC_ACCESS_KEY }}
 
 
   build:
