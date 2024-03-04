@@ -33,6 +33,41 @@ export const LambdaAssumeRolePolicy = {
         Sid: "",
     }],
 }
+export  const LambdaWithCodeInS3Config: ILambda = {
+    name: `${process.env.LAMBDA_NAME}-with-code-in-s3`,
+    codePath: resolve(__dirname, '../dist/'),
+    // s3Key: "",
+    s3Bucket: "",
+    handler: 'printEnv.handler',
+    runtime: 'nodejs18.x',
+    memorySize: 256,
+    timeout: 30,
+    namespace: process.env.NAMESPACE || '',
+    environment: process.env.ENVIRONMENT || '',
+    publish: true,
+    envVars: {
+        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
+        "test": "test"
+    },
+    tags,
+}
+
+export const LambdaWithVersioningConfig: ILambda={
+    name: `${process.env.LAMBDA_NAME}-with-versioning`,
+    codePath: resolve(__dirname, '../dist/'),
+    handler: 'printEnv.handler',
+    runtime: 'nodejs18.x',
+    memorySize: 256,
+    timeout: 30,
+    namespace: process.env.NAMESPACE || '',
+    environment: process.env.ENVIRONMENT || '',
+    publish: true,
+    envVars: {
+        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
+        "test": "test"
+    },
+    tags,
+}
 export const LambdaConfig: ILambda = {
     name: process.env.LAMBDA_NAME!,
     codePath: resolve(__dirname, '../dist/'),
@@ -46,7 +81,7 @@ export const LambdaConfig: ILambda = {
         "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
         "test": "test"
     },
-    tags
+    tags,
 }
 
 export const LambdaWithSQSConfig: ILambdaWithSqs = {
