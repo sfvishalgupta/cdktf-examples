@@ -5,19 +5,12 @@ import * as aws from "@cdktf/provider-aws";
 import * as Utils from "./utils";
 
 require("dotenv").config();
-export const LambdaConfig: ILambda = {
-    name: process.env.LAMBDA_NAME!,
-    codePath: resolve(__dirname, '../dist/'),
-    handler: 'printEnv.handler',
-    runtime: 'nodejs18.x',
-    memorySize: 256,
-    timeout: 30,
-    namespace: process.env.NAMESPACE || '',
-    environment: process.env.ENVIRONMENT || '',
-    envVars: {
-        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
-        "test": "test"
-    },
+
+export const tags = {
+    Team: 'CDK Team',
+    Company: 'Testing ',
+    Environment: process.env.ENVIRONMENT!,
+    Namespace: process.env.NAMESPACE!
 }
 
 export const LambdaCustomPolicy = {
@@ -39,6 +32,21 @@ export const LambdaAssumeRolePolicy = {
         Effect: "Allow",
         Sid: "",
     }],
+}
+export const LambdaConfig: ILambda = {
+    name: process.env.LAMBDA_NAME!,
+    codePath: resolve(__dirname, '../dist/'),
+    handler: 'printEnv.handler',
+    runtime: 'nodejs18.x',
+    memorySize: 256,
+    timeout: 30,
+    namespace: process.env.NAMESPACE || '',
+    environment: process.env.ENVIRONMENT || '',
+    envVars: {
+        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
+        "test": "test"
+    },
+    tags
 }
 
 export const LambdaWithSQSConfig: ILambdaWithSqs = {
@@ -63,6 +71,7 @@ export const LambdaWithSQSConfig: ILambdaWithSqs = {
         "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
         "test": "test"
     },
+    tags
 }
 
 export function getS3BackendConfig(id: string): S3BackendConfig {
@@ -151,10 +160,7 @@ export const CodeBuildConfig: aws.codebuildProject.CodebuildProjectConfig = {
             value: process.env.DB_PASSWORD!
         }]
     },
-    tags: {
-        "Name": "via cdk",
-        "Environment": process.env.ENVIRONMENT!
-    },
+    tags,
     // Optional
     vpcConfig: {
         vpcId: process.env.VPC_ID!,
@@ -174,12 +180,6 @@ export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationC
     exposeHeaders: ["ETag"],
 }];
 
-export const tags = {
-    Team: 'CDK Team',
-    Company: 'Testing ',
-    Environment: process.env.ENVIRONMENT!,
-    Namespace: process.env.NAMESPACE!
-}
 
 export function getS3BucketConfig(): aws.s3Bucket.S3BucketConfig {
     return {
