@@ -7,14 +7,13 @@ import * as Utils from "./utils";
 require("dotenv").config();
 export const LambdaConfig: ILambda = {
     name: process.env.LAMBDA_NAME!,
-    s3Bucket: process.env.LAMBDA_S3_BUCKET,
     codePath: resolve(__dirname, '../dist/'),
     handler: 'printEnv.handler',
     runtime: 'nodejs18.x',
     memorySize: 256,
     timeout: 30,
     namespace: process.env.NAMESPACE || '',
-    environment: process.env.ENVIRONEMENT || '',
+    environment: process.env.ENVIRONMENT || '',
     envVars: {
         "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
         "test": "test"
@@ -53,7 +52,6 @@ export const LambdaWithSQSConfig: ILambdaWithSqs = {
     maxReceiveCount: 10,
 
     name: process.env.LAMBDA_WITH_SQS_NAME!,
-    s3Bucket: process.env.LAMBDA_S3_BUCKET,
     codePath: resolve(__dirname, '../dist/'),
     handler: 'printEnv.handler',
     runtime: 'nodejs18.x',
@@ -105,5 +103,88 @@ export function getSecurityGroupConfig(vpcId: string, id: string): aws.securityG
             cidrBlocks: ['0.0.0.0/0'],
             description: "cdktf egress rule"
         }]
+    }
+}
+
+export const CodeBuildConfig: aws.codebuildProject.CodebuildProjectConfig = {
+    name: Utils.getResourceName("code-build"),
+    description: "My Codebuild Project created by CDKTF",
+    buildTimeout: 60,
+    serviceRole: process.env.SERVICE_ROLE!,
+    source: {
+        type: "S3",
+        location: process.env.SOURCE_BUCKET + process.env.SOURCE_FILE!,
+    },
+    artifacts: {
+        type: "NO_ARTIFACTS"
+    },
+    environment: {
+        computeType: "BUILD_GENERAL1_SMALL",
+        image: "aws/codebuild/amazonlinux2-x86_64-standard:5.0",
+        type: "LINUX_CONTAINER",
+        environmentVariable: [{
+            name: "TARGET_ACCOUNT_REGION",
+            value: process.env.TARGET_ACCOUNT_REGION!
+        }, {
+            name: "TARGET_ACCOUNT_ACCESS_KEY",
+            value: process.env.TARGET_ACCOUNT_ACCESS_KEY!
+        }, {
+            name: "TARGET_ACCOUNT_SECRET_KEY",
+            value: process.env.TARGET_ACCOUNT_SECRET_KEY!
+        }, {
+            name: "SOURCE_ACCOUNT_REGION",
+            value: process.env.SOURCE_ACCOUNT_REGION!
+        }, {
+            name: "SOURCE_ACCOUNT_ACCESS_KEY",
+            value: process.env.SOURCE_ACCOUNT_ACCESS_KEY!
+        }, {
+            name: "SOURCE_ACCOUNT_SECRET_KEY",
+            value: process.env.SOURCE_ACCOUNT_SECRET_KEY!
+        }, {
+            name: "DB_ENDPOINT",
+            value: process.env.DB_ENDPOINT!
+        }, {
+            name: "DB_USERNAME",
+            value: process.env.DB_USERNAME!
+        }, {
+            name: "DB_PASSWORD",
+            value: process.env.DB_PASSWORD!
+        }]
+    },
+    tags: {
+        "Name": "via cdk",
+        "Environment": process.env.ENVIRONMENT!
+    },
+    // Optional
+    vpcConfig: {
+        vpcId: process.env.VPC_ID!,
+        subnets: process.env.SUBNETS?.split(",")! || [],
+        securityGroupIds: process.env.SECURITY_GROUP_IDS?.split(",") || []
+    }
+}
+
+export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationCorsRule[] = [{
+    allowedMethods: ["GET"],
+    allowedOrigins: ["*"],
+}, {
+    allowedHeaders: ['*'],
+    allowedMethods: ["PUT", "POST"],
+    allowedOrigins: ["https://s3-website-test.hashicorp.com"],
+    maxAgeSeconds: 3000,
+    exposeHeaders: ["ETag"],
+}];
+
+export const tags = {
+    Team: 'CDK Team',
+    Company: 'Testing ',
+    Environment: process.env.ENVIRONMENT!,
+    Namespace: process.env.NAMESPACE!
+}
+
+export function getS3BucketConfig(): aws.s3Bucket.S3BucketConfig {
+    return {
+        bucket: `${process.env.BUCKET_STACK_BUCKET}`,
+        forceDestroy: true,
+        tags: tags
     }
 }

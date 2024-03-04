@@ -9,7 +9,7 @@
     "clean": "tsc --build --clean",
     "get": "cdktf get",
     "build": "tsc --pretty && cdktf synth",
-    "deploy": "tsc --pretty && cdktf deploy --auto-approve '*'",
+    "deploy": "tsc --pretty && cdktf deploy --auto-approve ",
     "synth": "cdktf synth",
     "compile": "tsc --pretty",
     "watch": "tsc -w",
