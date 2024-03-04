@@ -4,21 +4,6 @@ on:
   push:
     branches: [ main ]
 jobs:
-  build:
-    name: setup aws credentials
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.POC_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.POC_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
-      - run: aws sts get-caller-identity
-      - name: List S3 Buckets
-        run: |
-          aws s3 ls
-
   check-bats-version:
     runs-on: ubuntu-latest
     steps:
@@ -27,4 +12,21 @@ jobs:
         with:
           node-version: '18'
       - run: npm install -g bats
-      - run: bats -v
+      - run: cat ${{ secrets.POC_ACCESS_KEY }}
+
+
+  build:
+    name: setup aws credentials
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.POC_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.POC_SECRET_ASSESS_KEY }}
+          aws-region: us-east-2
+      - run: aws sts get-caller-identity
+      - name: List S3 Buckets
+        run: |
+          aws s3 ls
+
