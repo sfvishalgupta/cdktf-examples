@@ -12,8 +12,9 @@ import * as Utils from '../utils';
 import * as Config from '../config';
 
 export class BasicLambdaStack extends S3BackendStack {
-    private lambda: Lambda | undefined;
+
     private lambdaName: string | undefined;
+    lambda: Lambda | undefined;
 
     public constructor(scope: Construct, id: string, config: ILambda) {
         super(scope, id, Config.getS3BackendConfig(id));

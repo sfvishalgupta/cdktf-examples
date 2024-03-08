@@ -7,3 +7,4 @@ export * from './VPCStack';
 export * from './LambdaWithVersioning';
 export * from './LambdaCodeInS3Stack';
 // export * from './LambdaWithApiGatewayStack';
+export * from './RestAPIGateway';

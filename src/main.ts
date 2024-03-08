@@ -3,7 +3,7 @@ import * as Stacks from "./stacks";
 import * as Config from "./config";
 import {S3BucketConfig} from "@cdktf/provider-aws/lib/s3-bucket";
 import {getS3BucketConfig, LambdaWithCodeInS3Config, LambdaWithVersioningConfig} from "./config";
-import {LambdaCodeInS3Stack} from "./stacks";
+import {LambdaCodeInS3Stack, RestAPIGateway} from "./stacks";
 
 require("dotenv").config();
 
@@ -40,7 +40,23 @@ lambdaConfig.vpcConfig = {
         vpcStack.privateSubnet2.id
     ]
 }
-new Stacks.BasicLambdaStack(app, "MyLambdaStack", lambdaConfig);
+const  basicLambdaStack = new Stacks.BasicLambdaStack(app, "MyLambdaStack", lambdaConfig);
+
+new Stacks.RestAPIGateway(app, "MyRestAPIGateway",{
+    region: process.env.AWS_REGION!,
+    accountId: process.env.ACCOUNT_ID!,
+    name: "MyRestAPIGateway",
+    type: "REGIONAL",
+    tags: Config.tags,
+    description : "Created by cdktf",
+    proxyIntegrations: [{
+        name:"cat",
+        path:"cats",
+        authorization:"NONE",
+        method:Stacks.HTTPMethod.GET,
+        lambdaName:basicLambdaStack.lambda?.functionName!
+    }]
+})
 
 /** Lambda Stack with Version & alias enabled */
 const lambdaVersioningConfig: any = Config.LambdaWithVersioningConfig;
@@ -54,7 +70,7 @@ lambdaVersioningConfig.vpcConfig = {
         vpcStack.privateSubnet2.id
     ]
 }
-new Stacks.LambdaWithVersioning(app, "MyVersioningLambdaStack", lambdaVersioningConfig);
+//new Stacks.LambdaWithVersioning(app, "MyVersioningLambdaStack", lambdaVersioningConfig);
 
 /** Lambda with code in S3 Bucket */
 const lambdaCodeInS3Config: any = Config.LambdaWithCodeInS3Config;
@@ -70,7 +86,7 @@ lambdaCodeInS3Config.vpcConfig = {
         vpcStack.privateSubnet2.id
     ]
 }
-new Stacks.LambdaCodeInS3Stack(app, "MyS3LambdaStack", lambdaCodeInS3Config);
+//new Stacks.LambdaCodeInS3Stack(app, "MyS3LambdaStack", lambdaCodeInS3Config);
 
 
 /** Lambda With SQS Stack **/

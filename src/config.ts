@@ -6,7 +6,7 @@ import * as Utils from "./utils";
 
 require("dotenv").config();
 
-export const tags = {
+export const tags: {[key: string] : string} = {
     Team: 'CDK Team',
     Company: 'Testing ',
     Environment: process.env.ENVIRONMENT!,
