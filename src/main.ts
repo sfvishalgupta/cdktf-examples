@@ -1,9 +1,7 @@
 import {App} from "cdktf";
 import * as Stacks from "./stacks";
+import {APIEndPointType, Authorizer, HTTPMethod} from "./stacks";
 import * as Config from "./config";
-import {S3BucketConfig} from "@cdktf/provider-aws/lib/s3-bucket";
-import {getS3BucketConfig, LambdaWithCodeInS3Config, LambdaWithVersioningConfig} from "./config";
-import {LambdaCodeInS3Stack, RestAPIGateway} from "./stacks";
 
 require("dotenv").config();
 
@@ -40,21 +38,43 @@ lambdaConfig.vpcConfig = {
         vpcStack.privateSubnet2.id
     ]
 }
-const  basicLambdaStack = new Stacks.BasicLambdaStack(app, "MyLambdaStack", lambdaConfig);
+const basicLambdaStack = new Stacks.BasicLambdaStack(app, "MyLambdaStack", lambdaConfig);
 
-new Stacks.RestAPIGateway(app, "MyRestAPIGateway",{
+new Stacks.RestAPIGateway(app, "MyRestAPIGateway", {
     region: process.env.AWS_REGION!,
     accountId: process.env.ACCOUNT_ID!,
     name: "MyRestAPIGateway",
-    type: "REGIONAL",
+    type: APIEndPointType.REGIONAL,
     tags: Config.tags,
-    description : "Created by cdktf",
+    description: "Created by cdktf",
     proxyIntegrations: [{
-        name:"cat",
-        path:"cats",
-        authorization:"NONE",
-        method:Stacks.HTTPMethod.GET,
-        lambdaName:basicLambdaStack.lambda?.functionName!
+        name: "cats",
+        path: "cats",
+        authorization: Authorizer.NONE,
+        method: HTTPMethod.GET,
+        lambdaName: basicLambdaStack.lambda?.functionName!,
+        apiKeyRequired: true,
+        schema: JSON.stringify({
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "type": "array",
+            "items": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "age": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "age"
+                    ]
+                }
+            ]
+        })
     }]
 })
 
