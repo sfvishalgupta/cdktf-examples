@@ -27,7 +27,7 @@ export const LambdaAssumeRolePolicy = {
     Statement: [{
         Action: "sts:AssumeRole",
         Principal: {
-            Service: "lambda.amazonaws.com",
+            Service: ["lambda.amazonaws.com","apigateway.amazonaws.com"]
         },
         Effect: "Allow",
         Sid: "",

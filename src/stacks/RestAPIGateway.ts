@@ -4,51 +4,14 @@ import {Construct} from "constructs";
 import * as aws from "@cdktf/provider-aws"
 import {TerraformOutput} from "cdktf";
 import * as Utils from "../utils";
+import {iProxyIntegration, IRestAPIGatewayConfig} from "../interfaces";
+import {ITerraformDependable} from "cdktf/lib/terraform-dependable";
 
-interface iProxyIntegration {
-    name: string
-    path: string
-    authorization: string
-    method: string
-    lambdaName: string
-    apiKeyRequired?: boolean,
-    schema?: string
-}
-
-interface IRestAPIGatewayConfig {
-    region: string;
-    accountId: string;
-    name: string;
-    type: string;
-    description: string;
-    tags: { [key: string]: string };
-    proxyIntegrations: [iProxyIntegration];
-    webAclArn?: string;
-}
-
-export const enum Authorizer {
-    AWS_IAM = "AWS_IAM",
-    NONE = "NONE",
-}
-
-export const enum HTTPMethod {
-    ANY = "ANY",
-    DELETE = "DELETE",
-    GET = "GET",
-    PATCH = "PATCH",
-    POST = "POST",
-    PUT = "PUT",
-}
-
-export const enum APIEndPointType {
-    EDGE_OPTIMIZED = "EDGE",
-    PRIVATE = "PRIVATE",
-    REGIONAL = "REGIONAL",
-}
 
 export class RestAPIGateway extends S3BackendStack {
     apiGateway: aws.apiGatewayRestApi.ApiGatewayRestApi;
     private config: IRestAPIGatewayConfig;
+    private dependsOnResource: ITerraformDependable[] = [];
 
     constructor(scope: Construct, id: string, config: IRestAPIGatewayConfig) {
         super(scope, id, Config.getS3BackendConfig(id));
@@ -61,11 +24,31 @@ export class RestAPIGateway extends S3BackendStack {
                     types: [config.type]
                 },
                 tags: config.tags,
-
             });
+
         for (const obj of config.proxyIntegrations) {
             this.createProxyIntegration(config.name, obj);
         }
+        const deployment = new aws.apiGatewayDeployment.ApiGatewayDeployment(this, config.name + '-deployment', {
+            restApiId: this.apiGateway.id,
+            dependsOn: this.dependsOnResource,
+            stageName: config.stageName,
+            variables: {
+                deployed_at: "${timestamp()}"
+            }
+        });
+
+        // new aws.apiGatewayMethodSettings.ApiGatewayMethodSettings(this, config.name + '-method-setting', {
+        //     restApiId: this.apiGateway.id,
+        //     methodPath: "*/*",
+        //     stageName: config.stageName,
+        //     settings: {
+        //         dataTraceEnabled: true,
+        //         loggingLevel: "INFO",
+        //         throttlingBurstLimit: 100,
+        //         throttlingRateLimit: 100
+        //     }
+        // });
 
         if (config.webAclArn) {
             new aws.wafv2WebAclAssociation.Wafv2WebAclAssociation(this, 'sdfghjk', {
@@ -86,51 +69,56 @@ export class RestAPIGateway extends S3BackendStack {
             pathPart: obj.path,
         });
 
-        const proxyMethod = new aws.apiGatewayMethod.ApiGatewayMethod(this, name + '-proxy-method' + obj.name, {
-            restApiId: this.apiGateway.id,
-            resourceId: proxy.id,
-            authorization: obj.authorization,
-            httpMethod: obj.method,
-            apiKeyRequired: true,
-        });
-
-        const proxyIntegration = new aws.apiGatewayIntegration.ApiGatewayIntegration(this, name + '-proxy-integration' + obj.name, {
-            httpMethod: proxyMethod.httpMethod,
-            resourceId: proxy.id,
-            restApiId: this.apiGateway.id,
-            type: 'AWS_PROXY',
-            integrationHttpMethod: obj.method,
-            uri: `arn:aws:apigateway:${this.config.region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${this.config.region}:${this.config.accountId}:function: ${obj.lambdaName}/invocations`
-        })
-
-        if (obj.schema) {
-            new aws.apiGatewayModel.ApiGatewayModel(this, name + '-model-' + obj.name, {
+        for (const method of obj.methods) {
+            const proxyMethod = new aws.apiGatewayMethod.ApiGatewayMethod(this, name + '-proxy-method' + obj.name + "-" + method.name, {
                 restApiId: this.apiGateway.id,
-                contentType: 'application/json',
-                name: obj.method + obj.name,
-                description: Utils.getResourceName(name + '-model-' + obj.name),
-                schema: obj.schema,
+                resourceId: proxy.id,
+                authorization: method.authorization,
+                httpMethod: method.method,
+                apiKeyRequired: method.apiKeyRequired
+            });
+            this.dependsOnResource.push(proxyMethod);
+
+            const proxyMethodResponse = new aws.apiGatewayMethodResponse.ApiGatewayMethodResponse(this, name + '-proxy-method-response' + obj.name + "-" + method.name, {
+                restApiId: this.apiGateway.id,
+                resourceId: proxy.id,
+                statusCode: "200",
+                httpMethod: method.method,
+                responseParameters: {
+                    "method.response.header.Access-Control-Allow-Origin": true
+                },
+                dependsOn: [proxyMethod]
+            });
+            this.dependsOnResource.push(proxyMethodResponse);
+
+            const apiInt = new aws.apiGatewayIntegration.ApiGatewayIntegration(this, name + '-proxy-integration' + obj.name + "-" + method.name, {
+                httpMethod: proxyMethod.httpMethod,
+                resourceId: proxyMethod.resourceId,
+                restApiId: this.apiGateway.id,
+                type: 'AWS_PROXY',
+                integrationHttpMethod: "POST",
+                uri: `arn:aws:apigateway:${this.config.region}:lambda:path/2015-03-31/functions/${method.lambdaName}/invocations`
+            })
+            this.dependsOnResource.push(apiInt);
+
+
+            if (method.schema) {
+                const model = new aws.apiGatewayModel.ApiGatewayModel(this, name + '-model-' + obj.name + "-" + method.name, {
+                    restApiId: this.apiGateway.id,
+                    contentType: 'application/json',
+                    name: method.name,
+                    description: Utils.getResourceName(name + '-model-' + obj.name),
+                    schema: method.schema
+                });
+                this.dependsOnResource.push(model)
+            }
+
+            new aws.lambdaPermission.LambdaPermission(this, name + '-apigateway-lambda-permission' + obj.name + "-" + method.name, {
+                action: 'lambda:InvokeFunction',
+                functionName: method.lambdaName,
+                principal: 'apigateway.amazonaws.com',
+                sourceArn: `${this.apiGateway.executionArn}/*/${method.method}/${obj.path}`,
             })
         }
-        
-        new aws.apiGatewayDeployment.ApiGatewayDeployment(this, name + '-deployment', {
-            restApiId: this.apiGateway.id,
-            dependsOn: [
-                proxy,
-                proxyMethod,
-                proxyIntegration
-            ],
-            stageName: 'prod',
-            variables: {
-                deployed_at: "${timestamp()}"
-            }
-        })
-
-        new aws.lambdaPermission.LambdaPermission(this, name + '-apigateway-lambda-permission', {
-            action: 'lambda:InvokeFunction',
-            functionName: obj.lambdaName,
-            principal: 'apigateway.amazonaws.com',
-            sourceArn: `${this.apiGateway.executionArn}/*/*`,
-        })
     }
 }
