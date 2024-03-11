@@ -1,12 +1,13 @@
 import * as aws from "@cdktf/provider-aws";
+import {APIEndPointType, APILoggingLevel, Authorizer, HTTPMethod} from "./constants";
 
 export interface IRestAPIGatewayMethods {
     name: string;
-    authorization: string
-    method: string
+    authorization: Authorizer
+    method: HTTPMethod
     lambdaName: string
     apiKeyRequired?: boolean,
-    schema?: string
+    schema?: string,
 }
 
 export interface iProxyIntegration {
@@ -17,9 +18,13 @@ export interface iProxyIntegration {
 
 export interface IRestAPIGatewayConfig extends aws.apiGatewayRestApi.ApiGatewayRestApiConfig {
     region: string;
-    type: string;
+    type: APIEndPointType;
     proxyIntegrations: iProxyIntegration [];
     webAclArn?: string;
     stageName: string;
+    loggingLevel?: APILoggingLevel;
+    dataTraceEnabled?: boolean;
+    throttlingBurstLimit?: number;
+    throttlingRateLimit?: number;
 }
 

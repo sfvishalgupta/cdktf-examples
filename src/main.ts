@@ -1,6 +1,6 @@
 import {App} from "cdktf";
 import {BasicLambdaStack, LambdaRoleStack, RestAPIGateway,} from "./stacks";
-import {APIEndPointType, Authorizer, HTTPMethod} from "./constants";
+import {APIEndPointType, Authorizer, HTTPMethod, APILoggingLevel} from "./constants";
 import * as Config from "./config";
 import * as listCats from "./schema/listCats.json";
 
@@ -46,6 +46,7 @@ new RestAPIGateway(app, "MyRestAPIGateway", {
     tags: Config.tags,
     description: "Created by cdktf",
     stageName: "prod",
+    loggingLevel: APILoggingLevel.OFF,
     proxyIntegrations: [{
         name: "Cats",
         path: "cats",
@@ -55,7 +56,8 @@ new RestAPIGateway(app, "MyRestAPIGateway", {
             method: HTTPMethod.GET,
             lambdaName: lambdaFn!,
             apiKeyRequired: false,
-            schema: JSON.stringify(listCats)
+            schema: JSON.stringify(listCats),
+            // enableCORS: true,
         }, {
             name: "createCat",
             authorization: Authorizer.NONE,

@@ -6,6 +6,7 @@ import {TerraformOutput} from "cdktf";
 import * as Utils from "../utils";
 import {iProxyIntegration, IRestAPIGatewayConfig} from "../interfaces";
 import {ITerraformDependable} from "cdktf/lib/terraform-dependable";
+import {APILoggingLevel} from "../constants";
 
 
 export class RestAPIGateway extends S3BackendStack {
@@ -38,17 +39,20 @@ export class RestAPIGateway extends S3BackendStack {
             }
         });
 
-        // new aws.apiGatewayMethodSettings.ApiGatewayMethodSettings(this, config.name + '-method-setting', {
-        //     restApiId: this.apiGateway.id,
-        //     methodPath: "*/*",
-        //     stageName: config.stageName,
-        //     settings: {
-        //         dataTraceEnabled: true,
-        //         loggingLevel: "INFO",
-        //         throttlingBurstLimit: 100,
-        //         throttlingRateLimit: 100
-        //     }
-        // });
+        new aws.apiGatewayMethodSettings.ApiGatewayMethodSettings(this, config.name + '-method-setting', {
+            restApiId: this.apiGateway.id,
+            methodPath: "*/*",
+            stageName: config.stageName,
+            settings: {
+                dataTraceEnabled: config.dataTraceEnabled || false,
+                loggingLevel: config.loggingLevel || APILoggingLevel.OFF,
+                throttlingBurstLimit: config.throttlingBurstLimit || -1,
+                throttlingRateLimit: config.throttlingRateLimit || -1,
+            },
+            dependsOn: [
+                deployment
+            ]
+        });
 
         if (config.webAclArn) {
             new aws.wafv2WebAclAssociation.Wafv2WebAclAssociation(this, 'sdfghjk', {
@@ -57,8 +61,12 @@ export class RestAPIGateway extends S3BackendStack {
             });
         }
 
-        new TerraformOutput(this, config.name + "", {
+        new TerraformOutput(this, config.name + "-api-gateway-id", {
             value: this.apiGateway.id,
+        });
+
+        new TerraformOutput(this, config.name + "-api-gateway-deployment-id", {
+            value: deployment.id,
         })
     }
 
@@ -75,7 +83,7 @@ export class RestAPIGateway extends S3BackendStack {
                 resourceId: proxy.id,
                 authorization: method.authorization,
                 httpMethod: method.method,
-                apiKeyRequired: method.apiKeyRequired
+                apiKeyRequired: method.apiKeyRequired || false,
             });
             this.dependsOnResource.push(proxyMethod);
 

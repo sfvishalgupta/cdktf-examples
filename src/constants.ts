@@ -17,3 +17,9 @@ export const enum APIEndPointType {
     PRIVATE = "PRIVATE",
     REGIONAL = "REGIONAL",
 }
+
+export const enum APILoggingLevel {
+    ERROR = "ERROR",
+    INFO = "INFO",
+    OFF = "OFF",
+}
