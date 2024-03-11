@@ -1,14 +1,21 @@
 import {S3BackendStack} from "arc-cdk";
-import * as Config from "../config";
-import {Construct} from "constructs";
 import * as aws from "@cdktf/provider-aws"
+import {Construct} from "constructs";
 import {TerraformOutput} from "cdktf";
+import {ITerraformDependable} from "cdktf/lib/terraform-dependable";
+
+import * as Config from "../config";
 import * as Utils from "../utils";
 import {iProxyIntegration, IRestAPIGatewayConfig} from "../interfaces";
-import {ITerraformDependable} from "cdktf/lib/terraform-dependable";
 import {APILoggingLevel} from "../constants";
 
 
+/**
+ * Creates an API Gateway REST API and its associated resources.
+ * @param scope the parent construct
+ * @param id the construct ID
+ * @param config the API configuration
+ */
 export class RestAPIGateway extends S3BackendStack {
     apiGateway: aws.apiGatewayRestApi.ApiGatewayRestApi;
     private config: IRestAPIGatewayConfig;
@@ -30,6 +37,7 @@ export class RestAPIGateway extends S3BackendStack {
         for (const obj of config.proxyIntegrations) {
             this.createProxyIntegration(config.name, obj);
         }
+
         const deployment = new aws.apiGatewayDeployment.ApiGatewayDeployment(this, config.name + '-deployment', {
             restApiId: this.apiGateway.id,
             dependsOn: this.dependsOnResource,
@@ -70,6 +78,11 @@ export class RestAPIGateway extends S3BackendStack {
         })
     }
 
+    /**
+     * Creates a proxy integration for the API.
+     * @param name the construct name
+     * @param obj the proxy integration configuration
+     */
     private createProxyIntegration(name: string, obj: iProxyIntegration) {
         const proxy = new aws.apiGatewayResource.ApiGatewayResource(this, name + '-proxy-' + obj.name, {
             restApiId: this.apiGateway.id,
@@ -108,7 +121,6 @@ export class RestAPIGateway extends S3BackendStack {
                 uri: `arn:aws:apigateway:${this.config.region}:lambda:path/2015-03-31/functions/${method.lambdaName}/invocations`
             })
             this.dependsOnResource.push(apiInt);
-
 
             if (method.schema) {
                 const model = new aws.apiGatewayModel.ApiGatewayModel(this, name + '-model-' + obj.name + "-" + method.name, {

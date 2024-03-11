@@ -2,11 +2,14 @@ import {ILambda, ILambdaWithApiGateway, ILambdaWithSqs} from "arc-cdk";
 import {resolve} from "path";
 import {S3BackendConfig} from "cdktf";
 import * as aws from "@cdktf/provider-aws";
+import {IAdvancedLambda, IRestAPIGatewayConfig} from "./interfaces";
+import {APIEndPointType, APILoggingLevel, Authorizer, HTTPMethod} from "./constants";
+import * as listCats from "./schema/listCats.json";
 import * as Utils from "./utils";
 
-require("dotenv").config();
 
-export const tags: {[key: string] : string} = {
+require("dotenv").config();
+export const tags: { [key: string]: string } = {
     Team: 'CDK Team',
     Company: 'Testing ',
     Environment: process.env.ENVIRONMENT!,
@@ -27,13 +30,13 @@ export const LambdaAssumeRolePolicy = {
     Statement: [{
         Action: "sts:AssumeRole",
         Principal: {
-            Service: ["lambda.amazonaws.com","apigateway.amazonaws.com"]
+            Service: ["lambda.amazonaws.com", "apigateway.amazonaws.com"]
         },
         Effect: "Allow",
         Sid: "",
     }],
 }
-export  const LambdaWithCodeInS3Config: ILambda = {
+export const LambdaWithCodeInS3Config: ILambda = {
     name: `${process.env.LAMBDA_NAME}-with-code-in-s3`,
     codePath: resolve(__dirname, '../dist/'),
     // s3Key: "",
@@ -51,25 +54,7 @@ export  const LambdaWithCodeInS3Config: ILambda = {
     },
     tags,
 }
-
-export const LambdaWithVersioningConfig: ILambda={
-    name: `${process.env.LAMBDA_NAME}-with-versioning`,
-    codePath: resolve(__dirname, '../dist/'),
-    handler: 'printEnv.handler',
-    runtime: 'nodejs18.x',
-    memorySize: 256,
-    timeout: 6,
-    namespace: process.env.NAMESPACE || '',
-    environment: process.env.ENVIRONMENT || '',
-    publish: true,
-    envVars: {
-        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
-        "test": "test"
-    },
-    tags,
-}
-
-export const lambdaWithApiGatewayConfig: ILambdaWithApiGateway={
+export const lambdaWithApiGatewayConfig: ILambdaWithApiGateway = {
     name: `${process.env.LAMBDA_NAME}-with-api-gateway`,
     codePath: resolve(__dirname, '../dist/'),
     handler: 'printEnv.handler',
@@ -79,22 +64,6 @@ export const lambdaWithApiGatewayConfig: ILambdaWithApiGateway={
     namespace: process.env.NAMESPACE || '',
     environment: process.env.ENVIRONMENT || '',
     publish: true,
-    envVars: {
-        "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
-        "test": "test"
-    },
-    tags,
-}
-
-export const LambdaConfig: ILambda = {
-    name: process.env.LAMBDA_NAME!,
-    codePath: resolve(__dirname, '../dist/'),
-    handler: 'printEnv.handler',
-    runtime: 'nodejs18.x',
-    memorySize: 256,
-    timeout: 30,
-    namespace: process.env.NAMESPACE || '',
-    environment: process.env.ENVIRONMENT || '',
     envVars: {
         "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
         "test": "test"
@@ -125,47 +94,6 @@ export const LambdaWithSQSConfig: ILambdaWithSqs = {
         "test": "test"
     },
     tags
-}
-
-export function getS3BackendConfig(id: string): S3BackendConfig {
-    return {
-        bucket: process.env.BACKEND_TERRAFORM_BUCKET!,
-        key: "stacks/" + id + ".tfstate",
-        region: process.env.AWS_REGION,
-        encrypt: true
-    }
-}
-
-export function getVPCConfig(id: string): aws.vpc.VpcConfig {
-    return {
-        cidrBlock: process.env.VPC_CIDR,
-        tags: {
-            "Name": Utils.getResourceName(id)
-        }
-    }
-}
-
-export function getSecurityGroupConfig(vpcId: string, id: string): aws.securityGroup.SecurityGroupConfig {
-    return {
-        vpcId: vpcId,
-        tags: {
-            "Name": Utils.getResourceName(id)
-        },
-        ingress: [{
-            fromPort: 0,
-            toPort: 0,
-            protocol: '-1',
-            cidrBlocks: ['0.0.0.0/0'],
-            description: "cdktf ingress rule"
-        }],
-        egress: [{
-            fromPort: 0,
-            toPort: 0,
-            protocol: '-1',
-            cidrBlocks: ['0.0.0.0/0'],
-            description: "cdktf egress rule"
-        }]
-    }
 }
 
 export const CodeBuildConfig: aws.codebuildProject.CodebuildProjectConfig = {
@@ -222,6 +150,19 @@ export const CodeBuildConfig: aws.codebuildProject.CodebuildProjectConfig = {
     }
 }
 
+/**
+ * Returns a VPC configuration.
+ * @param id - the ID of the VPC
+ */
+export function getVPCConfig(id: string): aws.vpc.VpcConfig {
+    return {
+        cidrBlock: process.env.VPC_CIDR,
+        tags: {
+            "Name": Utils.getResourceName(id),
+        },
+    };
+}
+
 export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationCorsRule[] = [{
     allowedMethods: ["GET"],
     allowedOrigins: ["*"],
@@ -233,11 +174,207 @@ export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationC
     exposeHeaders: ["ETag"],
 }];
 
-
-export function getS3BucketConfig(): aws.s3Bucket.S3BucketConfig {
+/**
+ * Returns a security group configuration.
+ * @param vpcId - the ID of the VPC to create the security group in
+ * @param id - the ID of the security group
+ */
+export function getSecurityGroupConfig(vpcId: string, id: string): aws.securityGroup.SecurityGroupConfig {
     return {
+        vpcId,
+        tags: {
+            Name: Utils.getResourceName(id),
+        },
+        ingress: [{
+            fromPort: 0,
+            toPort: 0,
+            protocol: '-1',
+            cidrBlocks: ['0.0.0.0/0'],
+            description: 'cdktf ingress rule',
+        }],
+        egress: [{
+            fromPort: 0,
+            toPort: 0,
+            protocol: '-1',
+            cidrBlocks: ['0.0.0.0/0'],
+            description: 'cdktf egress rule',
+        }],
+    };
+}
+
+
+/**
+ * Returns an S3 bucket configuration.
+ */
+export function GetS3BucketConfig(): aws.s3Bucket.S3BucketConfig {
+    return {
+        /**
+         * the name of the S3 bucket
+         */
         bucket: `${process.env.BUCKET_STACK_BUCKET}`,
+        /**
+         * whether to destroy the S3 bucket and all its contents when the stack is deleted
+         */
         forceDestroy: true,
+        /**
+         * tags to apply to the S3 bucket
+         */
         tags: tags
     }
+}
+
+/**
+ * Returns a Terraform backend configuration for S3.
+ * @param id - the ID of the Terraform state
+ */
+export function getS3BackendConfig(id: string): S3BackendConfig {
+    return {
+        /**
+         * the name of the S3 bucket
+         */
+        bucket: process.env.BACKEND_TERRAFORM_BUCKET!,
+        /**
+         * the path to the Terraform state file within the S3 bucket
+         */
+        key: `stacks/${id}.tfstate`,
+        /**
+         * the AWS region where the S3 bucket is located
+         */
+        region: process.env.AWS_REGION,
+        /**
+         * whether to enable server-side encryption of the Terraform state
+         */
+        encrypt: true,
+    };
+}
+
+
+/**
+ * Returns an API Gateway configuration for a REST API with a single endpoint that invokes the specified Lambda function.
+ * @param lambdaFn - the name of the Lambda function to invoke
+ */
+export function GetApiGatewayConfig(lambdaFn: string): IRestAPIGatewayConfig {
+    return {
+        name: "MyRestAPIGateway",
+        region: process.env.region!,
+        type: APIEndPointType.REGIONAL,
+        tags: tags,
+        description: "Created by cdktf",
+        stageName: "prod",
+        loggingLevel: APILoggingLevel.OFF,
+        proxyIntegrations: [{
+            name: "Cats",
+            path: "cats",
+            methods: [{
+                name: "listCats",
+                authorization: Authorizer.NONE,
+                method: HTTPMethod.GET,
+                lambdaName: lambdaFn!,
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats),
+                alias: "$latest"
+                // enableCORS: true,
+            }, {
+                name: "createCat",
+                authorization: Authorizer.NONE,
+                method: HTTPMethod.POST,
+                lambdaName: lambdaFn,
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats)
+            }],
+        }, {
+            name: "Dogs",
+            path: "dogs",
+            methods: [{
+                name: "listDogs",
+                authorization: Authorizer.NONE,
+                method: HTTPMethod.GET,
+                lambdaName: lambdaFn!,
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats),
+                alias: "$latest"
+            }],
+        }]
+    }
+}
+
+export function GetApiGatewayConfigVersioning(lambdaFn: string): IRestAPIGatewayConfig {
+    return {
+        name: "MyRestAPIGatewayVersioning",
+        region: process.env.region!,
+        type: APIEndPointType.REGIONAL,
+        tags: tags,
+        description: "Created by cdktf versioning",
+        stageName: "prod",
+        loggingLevel: APILoggingLevel.OFF,
+        proxyIntegrations: [{
+            name: "Version1",
+            path: "Version1",
+            methods: [{
+                name: "listCats",
+                authorization: Authorizer.NONE,
+                method: HTTPMethod.GET,
+                lambdaName: lambdaFn!+":Versioning1",
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats)
+            }],
+        }, {
+            name: "Version2",
+            path: "Version2",
+            methods: [{
+                name: "listDogs",
+                authorization: Authorizer.NONE,
+                method: HTTPMethod.GET,
+                lambdaName: lambdaFn!+":Versioning2",
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats)
+            }],
+        }]
+    }
+}
+
+/**
+ * Returns a Lambda configuration.
+ * @param roleArn - the ARN of the IAM role to attach to the Lambda function
+ */
+export function GetLambdaConfig(roleArn: string): IAdvancedLambda {
+    return {
+        name: process.env.LAMBDA_NAME!,
+        codePath: resolve(__dirname, '../dist/'),
+        handler: 'printEnv.handler',
+        runtime: 'nodejs18.x',
+        memorySize: 256,
+        timeout: 30,
+        namespace: process.env.NAMESPACE || '',
+        environment: process.env.ENVIRONMENT || '',
+        envVars: {
+            "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
+            "test": "test"
+        },
+        tags,
+        roleArn,
+    }
+}
+
+export function GetLambdaWithVersioningConfig(roleArn: string): IAdvancedLambda {
+    return {
+        name: `${process.env.LAMBDA_NAME}-with-versioning`,
+        codePath: resolve(__dirname, '../dist/'),
+        handler: 'versioningLambda.handler',
+        runtime: 'nodejs18.x',
+        memorySize: 256,
+        timeout: 6,
+        namespace: process.env.NAMESPACE || '',
+        environment: process.env.ENVIRONMENT || '',
+        publish: true,
+        envVars: {
+            "username": "ssm:/erin/poc/aurora/cluster_admin_db_username~true",
+            "test": "test"
+        },
+        tags,
+        roleArn,
+        enableAlias: true,
+        aliasName: "Versioning2",
+        aliasVersion: "$LATEST",
+    };
 }
