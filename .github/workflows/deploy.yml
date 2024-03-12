@@ -18,24 +18,28 @@ jobs:
     name: setup aws credentials
     runs-on: ubuntu-latest
     steps:
-      - name: GitCheckout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-      - name: Checkout
+      - name: Setup aws credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.POC_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.POC_SECRET_ASSESS_KEY }}
           aws-region: us-east-2
-      - run: aws sts get-caller-identity
-      - name: List S3 Buckets
-        run: |
-          aws s3 ls
-      - name: Deploy CDKTF Template
-        run: |
-          ls -al |
-          npm install -g cdktf |
-          cdktf list
+      - name: GitCheckout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: Install dependencies
+        run: yarn install --check-files
+      - name: Install dependencies Globally
+        run: npm -v
+#      - run: aws sts get-caller-identity
+#      - name: List S3 Buckets
+#        run: |
+#          aws s3 ls
+#      - name: Deploy CDKTF Template
+#        run: |
+#          ls -al |
+#          npm install -g cdktf |
+#          cdktf list
 
