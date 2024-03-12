@@ -25,11 +25,7 @@ class MyApp extends App {
     private wafRules: Wafv2WebAclRule[] = [];
 
     addIamRoleStack(name: string) {
-        this.IamRoleStack = new LambdaRoleStack(
-            this,
-            "MyIamRoleStack",
-            Config.LambdaCustomPolicy
-        );
+        this.IamRoleStack = new LambdaRoleStack(this, name, Config.LambdaCustomPolicy);
         return this;
     }
 
@@ -115,6 +111,7 @@ class MyApp extends App {
     }
 
     addWafStack(name: string) {
+        this.wafRules.push(Config.GetRateBasedWafRule());
         this.wafStack = new WafWebACLStack(app, name, Config.GetWebACLConfig(this.wafRules));
         return this;
     }

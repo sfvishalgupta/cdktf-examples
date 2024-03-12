@@ -1,15 +1,20 @@
 import {ILambda, ILambdaWithApiGateway, ILambdaWithSqs} from "arc-cdk";
-import {resolve} from "path";
-import {S3BackendConfig} from "cdktf";
-import * as aws from "@cdktf/provider-aws";
-import {IAdvancedLambda, IRestAPIGatewayConfig} from "./interfaces";
-import {APIEndPointType, APILoggingLevel, Authorizer, HTTPMethod} from "./constants";
-import * as listCats from "./schema/listCats.json";
-import * as Utils from "./utils";
 import {Wafv2IpSetConfig} from "@cdktf/provider-aws/lib/wafv2-ip-set";
 import {Wafv2WebAclRule} from "@cdktf/provider-aws/lib/wafv2-web-acl/index-structs";
 import {Wafv2WebAclConfig} from "@cdktf/provider-aws/lib/wafv2-web-acl";
+import {CodebuildProjectConfig} from "@cdktf/provider-aws/lib/codebuild-project";
+import {SecurityGroupConfig} from "@cdktf/provider-aws/lib/security-group";
+import {VpcConfig} from "@cdktf/provider-aws/lib/vpc";
+import {S3BucketCorsConfigurationCorsRule} from "@cdktf/provider-aws/lib/s3-bucket-cors-configuration";
+import {S3BucketConfig} from "@cdktf/provider-aws/lib/s3-bucket";
+import {resolve} from "path";
+import {S3BackendConfig} from "cdktf";
+
+import {IAdvancedLambda, IRestAPIGatewayConfig} from "./interfaces";
+import * as listCats from "./schema/listCats.json";
+import * as Utils from "./utils";
 import {getResourceName} from "./utils";
+import {APIEndPointType, APILoggingLevel, Authorizer, HTTPMethod, WAF_AGGREGATE_KEY_TYPE, WAF_SCOPE} from "./constants";
 
 
 require("dotenv").config();
@@ -100,7 +105,7 @@ export const LambdaWithSQSConfig: ILambdaWithSqs = {
     tags
 }
 
-export const CodeBuildConfig: aws.codebuildProject.CodebuildProjectConfig = {
+export const CodeBuildConfig: CodebuildProjectConfig = {
     name: Utils.getResourceName("code-build"),
     description: "My Codebuild Project created by CDKTF",
     buildTimeout: 60,
@@ -158,7 +163,7 @@ export const CodeBuildConfig: aws.codebuildProject.CodebuildProjectConfig = {
  * Returns a VPC configuration.
  * @param id - the ID of the VPC
  */
-export function getVPCConfig(id: string): aws.vpc.VpcConfig {
+export function getVPCConfig(id: string): VpcConfig {
     return {
         cidrBlock: process.env.VPC_CIDR,
         tags: {
@@ -167,12 +172,12 @@ export function getVPCConfig(id: string): aws.vpc.VpcConfig {
     };
 }
 
-export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationCorsRule[] = [{
-    allowedMethods: ["GET"],
+export const corsRules: S3BucketCorsConfigurationCorsRule[] = [{
+    allowedMethods: [HTTPMethod.GET],
     allowedOrigins: ["*"],
 }, {
     allowedHeaders: ['*'],
-    allowedMethods: ["PUT", "POST"],
+    allowedMethods: [HTTPMethod.PUT, HTTPMethod.POST],
     allowedOrigins: ["https://s3-website-test.hashicorp.com"],
     maxAgeSeconds: 3000,
     exposeHeaders: ["ETag"],
@@ -180,7 +185,7 @@ export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationC
 
 export const IPBlackListRule: Wafv2IpSetConfig = {
     name: getResourceName("ip-blacklist"),
-    scope: "REGIONAL",
+    scope: WAF_SCOPE.REGIONAL,
     ipAddressVersion: "IPV4",
     addresses: ["122.161.74.216/32"],
     description: "IP blacklisted"
@@ -206,10 +211,46 @@ export function GetWebACLIPBlackListRule(ruleARN: string): Wafv2WebAclRule {
     }
 }
 
+/**
+ * Returns a rate-based WAF rule.
+ */
+export function GetRateBasedWafRule(): Wafv2WebAclRule {
+    return {
+        name: getResourceName("rate-based-waf-rule"),
+        priority: 2,
+        action: {
+            block: {},
+        },
+        statement: {
+            rateBasedStatement: {
+                // The limit defines the number of requests that are allowed within the specified time period.
+                limit: 1000,
+                // The aggregate key type determines how the requests are aggregated. In this case, the IP address is used.
+                aggregateKeyType: WAF_AGGREGATE_KEY_TYPE.IP,
+                // The scope down statement defines the conditions that must be met for the requests to be included in the rule.
+                scopeDownStatement: {
+                    // The geo match statement defines the countries that are allowed to access the resource.
+                    geoMatchStatement: {
+                        countryCodes: ["US"],
+                    },
+                },
+            },
+        },
+        visibilityConfig: {
+            // Enables metrics collection for the rule.
+            cloudwatchMetricsEnabled: true,
+            // The name of the metric.
+            metricName: getResourceName("rate-based-waf-rule-metric"),
+            // Enables sampling of requests for the rule.
+            sampledRequestsEnabled: true,
+        },
+    };
+}
+
 export function GetWebACLConfig(rule: Wafv2WebAclRule[]): Wafv2WebAclConfig {
     return {
         name: getResourceName("firewall"),
-        scope: "REGIONAL",
+        scope: WAF_SCOPE.REGIONAL,
         description: "For IP Block",
         defaultAction: {
             allow: {},
@@ -224,13 +265,12 @@ export function GetWebACLConfig(rule: Wafv2WebAclRule[]): Wafv2WebAclConfig {
     }
 }
 
-
 /**
  * Returns a security group configuration.
  * @param vpcId - the ID of the VPC to create the security group in
  * @param id - the ID of the security group
  */
-export function getSecurityGroupConfig(vpcId: string, id: string): aws.securityGroup.SecurityGroupConfig {
+export function getSecurityGroupConfig(vpcId: string, id: string): SecurityGroupConfig {
     return {
         vpcId,
         tags: {
@@ -256,7 +296,7 @@ export function getSecurityGroupConfig(vpcId: string, id: string): aws.securityG
 /**
  * Returns an S3 bucket configuration.
  */
-export function GetS3BucketConfig(): aws.s3Bucket.S3BucketConfig {
+export function GetS3BucketConfig(): S3BucketConfig {
     return {
         /**
          * the name of the S3 bucket
@@ -406,6 +446,10 @@ export function GetLambdaConfig(roleArn: string): IAdvancedLambda {
     }
 }
 
+/**
+ * Returns a Lambda configuration.
+ * @param roleArn - the ARN of the IAM role to attach to the Lambda function
+ */
 export function GetLambdaWithVersioningConfig(roleArn: string): IAdvancedLambda {
     return {
         name: `${process.env.LAMBDA_NAME}-with-versioning`,

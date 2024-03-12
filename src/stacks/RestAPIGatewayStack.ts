@@ -61,8 +61,7 @@ export class RestAPIGatewayStack extends S3BackendStack {
                 deployment
             ]
         });
-
-        console.log(config.webAclArn)
+        
         if (config.webAclArn) {
             new aws.wafv2WebAclAssociation.Wafv2WebAclAssociation(this, 'sdfghjk', {
                 resourceArn: this.apiGateway.arn + '/stages/' + config.stageName,
