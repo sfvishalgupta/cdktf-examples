@@ -5,7 +5,7 @@ import * as aws from "@cdktf/provider-aws";
 import * as Utils from "../utils";
 import * as Config from "../config";
 
-export class LambdaRoleStack extends S3BackendStack {
+export class IAMRoleStack extends S3BackendStack {
     /**
      * iam Role created by Stack.
      */

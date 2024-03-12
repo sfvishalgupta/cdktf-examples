@@ -8,6 +8,7 @@
   "scripts": {
     "clean": "tsc --build --clean",
     "get": "cdktf get",
+    "list": "cdktf list",
     "build": "tsc --pretty && cdktf synth",
     "deploy": "tsc --pretty && cdktf deploy --auto-approve ",
     "synth": "cdktf synth",

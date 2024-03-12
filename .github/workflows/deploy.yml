@@ -1,47 +1,71 @@
 name: cdk-testing-project-deployment
-run-name: ${{ github.actor }} cdktf testing project
+run-name: ${{ github.actor }} cdktf testing project.
+
 on:
   push:
-    branches: [ main ]
-jobs:
-  check-bats-version:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm install -g bats
-      - run: bats -v | ls -al | npm install
+    branches:
+      - main
 
-  build:
-    name: setup aws credentials
+permissions:
+  id-token: write   # This is required for aws oidc connection
+  contents: read   # This is required for actions/checkout
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bootstrap:
+    name: bootstrap
     runs-on: ubuntu-latest
+    environment: testing
+    env:
+      working-directory: $GITHUB_WORKSPACE
     steps:
-      - name: Setup aws credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.POC_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.POC_SECRET_ASSESS_KEY }}
-          aws-region: us-east-2
+        ## Checkout Git Code
       - name: GitCheckout
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-      - name: Install dependencies
-        run: yarn install --check-files
-      - name: Install dependencies Globally
-        run: npm -v |
-          npm install --global cdktf-cli@latest |
-          cdktf list
-#      - run: aws sts get-caller-identity
-#      - name: List S3 Buckets
-#        run: |
-#          aws s3 ls
-#      - name: Deploy CDKTF Template
-#        run: |
-#          ls -al |
-#          npm install -g cdktf |
-#          cdktf list
+            ref: ${{ github.event.pull_request.head.ref }}
+            repository: ${{ github.event.pull_request.head.repo.full_name }}
 
+      ## List of files.
+      - name: List files.
+        run: ls -la
+
+      - name: Configure AWS credentials from AWS account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+#             aws-access-key-id: ${{ secrets.POC_ACCESS_KEY }}
+#             aws-secret-access-key: ${{ secrets.POC_SECRET_ASSESS_KEY }}
+            role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+            aws-region: us-east-2
+            role-session-name: GitHub-OIDC-TF
+
+      - name: Test AWS Connection
+        run: aws s3 ls
+
+      - name: Install CDKTF-CLI
+        run: |
+           npm install --global cdktf-cli@latest
+           npm install
+
+      - name: Create Environment
+        run: |
+            touch .env
+            echo "CDKTF_LOG_LEVEL=debug" >> .env
+            echo "AWS_REGION=us-east-2" >> .env
+            echo "NAMESPACE=cdktf" >> .env
+            echo "ENVIRONMENT=testing" >> .env
+            echo "BACKEND_TERRAFORM_BUCKET=${{ vars.BACKEND_TERRAFORM_BUCKET }}" >> .env
+            echo "LAMBDA_NAME=${{ vars.LAMBDA_NAME }}" >> .env
+            echo "BUCKET_STACK_BUCKET=${{ vars.BUCKET_STACK_BUCKET }}" >> .env
+            echo "VPC_CIDR=${{ vars.VPC_CIDR }}" >> .env
+
+      - name: Build and Deploy
+        run: |
+            npm run deploy '*'
+
+      - name: List CDKTF Stacks
+        run: |
+            npm run list

@@ -2,7 +2,7 @@ import {App} from "cdktf";
 import {
     BasicLambdaStack,
     CodebuildStack,
-    LambdaRoleStack,
+    IAMRoleStack,
     LambdaWithSQSStack,
     RestAPIGatewayStack,
     S3BucketStack,
@@ -16,7 +16,7 @@ import {Wafv2WebAclRule} from "@cdktf/provider-aws/lib/wafv2-web-acl/index-struc
 require("dotenv").config();
 
 class MyApp extends App {
-    private IamRoleStack: LambdaRoleStack | undefined;
+    private IamRoleStack: IAMRoleStack | undefined;
     private basicLambdaStack: BasicLambdaStack | undefined;
     private s3BucketStack: S3BucketStack | undefined;
     private vpcStack: VPCStack | undefined;
@@ -25,7 +25,7 @@ class MyApp extends App {
     private wafRules: Wafv2WebAclRule[] = [];
 
     addIamRoleStack(name: string) {
-        this.IamRoleStack = new LambdaRoleStack(this, name, Config.LambdaCustomPolicy);
+        this.IamRoleStack = new IAMRoleStack(this, name, Config.LambdaCustomPolicy);
         return this;
     }
 
@@ -143,13 +143,13 @@ app
     .addWafRuleStack("MyWafRuleStack")
     .addWafStack("MyWafStack")
 
-    // .addS3BucketStack("MyS3BucketStack")
+    .addS3BucketStack("MyS3BucketStack")
     // .addCodeBuildProject("MyCodeBuildStack")
     // .addLambdaWithSQS("MyLambdaWithSQSStack")
 
     /** Lambda and Rest API Gateway */
     .addLambdaStack("MyLambdaStack")
-    .addRestAPIGatewayStack("MyRestAPIGateway")
+    // .addRestAPIGatewayStack("MyRestAPIGateway")
 
     /** Lambda and Rest API Gateway with Versioning */
     // .addLambdaWithVersioning("MyVersioningLambda")
