@@ -6,6 +6,10 @@ import {IAdvancedLambda, IRestAPIGatewayConfig} from "./interfaces";
 import {APIEndPointType, APILoggingLevel, Authorizer, HTTPMethod} from "./constants";
 import * as listCats from "./schema/listCats.json";
 import * as Utils from "./utils";
+import {Wafv2IpSetConfig} from "@cdktf/provider-aws/lib/wafv2-ip-set";
+import {Wafv2WebAclRule} from "@cdktf/provider-aws/lib/wafv2-web-acl/index-structs";
+import {Wafv2WebAclConfig} from "@cdktf/provider-aws/lib/wafv2-web-acl";
+import {getResourceName} from "./utils";
 
 
 require("dotenv").config();
@@ -174,6 +178,53 @@ export const corsRules: aws.s3BucketCorsConfiguration.S3BucketCorsConfigurationC
     exposeHeaders: ["ETag"],
 }];
 
+export const IPBlackListRule: Wafv2IpSetConfig = {
+    name: getResourceName("ip-blacklist"),
+    scope: "REGIONAL",
+    ipAddressVersion: "IPV4",
+    addresses: ["122.161.74.216/32"],
+    description: "IP blacklisted"
+}
+
+export function GetWebACLIPBlackListRule(ruleARN: string): Wafv2WebAclRule {
+    return {
+        name: getResourceName("ip-blacklist"),
+        priority: 1,
+        action: {
+            block: {},
+        },
+        statement: {
+            ipSetReferenceStatement: {
+                arn: ruleARN
+            }
+        },
+        visibilityConfig: {
+            cloudwatchMetricsEnabled: true,
+            metricName: getResourceName("BlacklistedIP"),
+            sampledRequestsEnabled: true,
+        }
+    }
+}
+
+export function GetWebACLConfig(rule: Wafv2WebAclRule[]): Wafv2WebAclConfig {
+    return {
+        name: getResourceName("firewall"),
+        scope: "REGIONAL",
+        description: "For IP Block",
+        defaultAction: {
+            allow: {},
+        },
+        tags,
+        visibilityConfig: {
+            cloudwatchMetricsEnabled: true,
+            metricName: getResourceName("Allowed"),
+            sampledRequestsEnabled: true,
+        },
+        rule,
+    }
+}
+
+
 /**
  * Returns a security group configuration.
  * @param vpcId - the ID of the VPC to create the security group in
@@ -201,7 +252,6 @@ export function getSecurityGroupConfig(vpcId: string, id: string): aws.securityG
         }],
     };
 }
-
 
 /**
  * Returns an S3 bucket configuration.
@@ -248,12 +298,12 @@ export function getS3BackendConfig(id: string): S3BackendConfig {
     };
 }
 
-
 /**
  * Returns an API Gateway configuration for a REST API with a single endpoint that invokes the specified Lambda function.
  * @param lambdaFn - the name of the Lambda function to invoke
+ * @param webAclArn
  */
-export function GetApiGatewayConfig(lambdaFn: string): IRestAPIGatewayConfig {
+export function GetApiGatewayConfig(lambdaFn: string, webAclArn: string): IRestAPIGatewayConfig {
     return {
         name: "MyRestAPIGateway",
         region: process.env.region!,
@@ -261,7 +311,7 @@ export function GetApiGatewayConfig(lambdaFn: string): IRestAPIGatewayConfig {
         tags: tags,
         description: "Created by cdktf",
         stageName: "prod",
-        loggingLevel: APILoggingLevel.OFF,
+        webAclArn,
         proxyIntegrations: [{
             name: "Cats",
             path: "cats",
@@ -314,7 +364,7 @@ export function GetApiGatewayConfigVersioning(lambdaFn: string): IRestAPIGateway
                 name: "listCats",
                 authorization: Authorizer.NONE,
                 method: HTTPMethod.GET,
-                lambdaName: lambdaFn!+":Versioning1",
+                lambdaName: lambdaFn! + ":Versioning1",
                 apiKeyRequired: false,
                 schema: JSON.stringify(listCats)
             }],
@@ -325,7 +375,7 @@ export function GetApiGatewayConfigVersioning(lambdaFn: string): IRestAPIGateway
                 name: "listDogs",
                 authorization: Authorizer.NONE,
                 method: HTTPMethod.GET,
-                lambdaName: lambdaFn!+":Versioning2",
+                lambdaName: lambdaFn! + ":Versioning2",
                 apiKeyRequired: false,
                 schema: JSON.stringify(listCats)
             }],

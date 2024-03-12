@@ -16,7 +16,7 @@ import {APILoggingLevel} from "../constants";
  * @param id the construct ID
  * @param config the API configuration
  */
-export class RestAPIGateway extends S3BackendStack {
+export class RestAPIGatewayStack extends S3BackendStack {
     apiGateway: aws.apiGatewayRestApi.ApiGatewayRestApi;
     private config: IRestAPIGatewayConfig;
     private dependsOnResource: ITerraformDependable[] = [];
@@ -62,15 +62,20 @@ export class RestAPIGateway extends S3BackendStack {
             ]
         });
 
+        console.log(config.webAclArn)
         if (config.webAclArn) {
             new aws.wafv2WebAclAssociation.Wafv2WebAclAssociation(this, 'sdfghjk', {
-                resourceArn: this.apiGateway.arn,
+                resourceArn: this.apiGateway.arn + '/stages/' + config.stageName,
                 webAclArn: config.webAclArn,
             });
         }
 
         new TerraformOutput(this, config.name + "-api-gateway-id", {
             value: this.apiGateway.id,
+        });
+
+        new TerraformOutput(this, config.name + "-api-gateway-arn", {
+            value: this.apiGateway.arn,
         });
 
         new TerraformOutput(this, config.name + "-api-gateway-deployment-id", {

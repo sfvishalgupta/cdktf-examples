@@ -1,6 +1,9 @@
 import * as aws from "@cdktf/provider-aws";
 import {APIEndPointType, APILoggingLevel, Authorizer, HTTPMethod} from "./constants";
 import {ILambda} from 'arc-cdk';
+import {Wafv2WebAclConfig} from "@cdktf/provider-aws/lib/wafv2-web-acl";
+import {Wafv2IpSetConfig} from "@cdktf/provider-aws/lib/wafv2-ip-set";
+import {Wafv2WebAclRule} from "@cdktf/provider-aws/lib/wafv2-web-acl/index-structs";
 
 /* The `export interface IRestAPIGatewayMethods` is defining a TypeScript interface that specifies the
 configuration options for individual methods in a REST API Gateway. It includes properties such as
