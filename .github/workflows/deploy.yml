@@ -36,6 +36,6 @@ jobs:
       - name: Deploy CDKTF Template
         run: |
           ls -al |
-          npm install |
+          npm install -g cdktf |
           cdktf list
 
