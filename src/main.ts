@@ -129,7 +129,7 @@ app
     .addWafStack("MyWafWebACLStack")
     //
     // .addS3BucketStack("MyS3BucketStack")
-    .addCodeBuildProject("MyCodeBuildStack")
+    // .addCodeBuildProject("MyCodeBuildStack")
     // .addLambdaWithSQS("MyLambdaWithSQSStack")
     //
     // /** Lambda and Rest API Gateway */
