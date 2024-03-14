@@ -5,60 +5,24 @@ import {
     IAMRoleStack,
     LambdaWithSQSStack,
     RestAPIGatewayStack,
-    S3BucketStack,
     VPCStack,
     WafRulesStack,
     WafWebACLStack
 } from "./stacks";
 import * as Config from "./config";
-import {Wafv2WebAclRule} from "@cdktf/provider-aws/lib/wafv2-web-acl/index-structs";
 
 require("dotenv").config();
 
 class MyApp extends App {
     private IamRoleStack: IAMRoleStack | undefined;
     private basicLambdaStack: BasicLambdaStack | undefined;
-    private s3BucketStack: S3BucketStack | undefined;
     private vpcStack: VPCStack | undefined;
-    private versioningLambda: BasicLambdaStack | undefined;
-    private wafStack: WafWebACLStack | undefined;
-    private wafRules: Wafv2WebAclRule[] = [];
+    private wafWebACLStack: WafWebACLStack | undefined;
+    private iamRoleARN: string | undefined;
 
     addIamRoleStack(name: string) {
-        this.IamRoleStack = new IAMRoleStack(this, name, Config.LambdaCustomPolicy);
-        return this;
-    }
-
-    addLambdaStack(name: string) {
-        const lambdaConfig: any = Config.GetLambdaConfig(
-            // @ts-ignore
-            this.IamRoleStack.iamRole.arn,
-        );
-        lambdaConfig.vpcConfig = this.getVPCConfig();
-        this.basicLambdaStack = new BasicLambdaStack(app, name, lambdaConfig);
-        return this;
-    }
-
-    addRestAPIGatewayStack(name: string) {
-        // const  lambdaFn="arn:aws:lambda:us-east-2:665333684765:function:cdktf-testing-plain-print-lambda";
-        // @ts-ignore
-        const lambdaFn = this.basicLambdaStack.lambda?.arn!;
-        new RestAPIGatewayStack(app, name,
-            Config.GetApiGatewayConfig(
-                lambdaFn,
-                // @ts-ignore
-                this.wafStack.webACL.arn
-            )
-        )
-        return this;
-    }
-
-    addS3BucketStack(name: string) {
-        this.s3BucketStack = new S3BucketStack(
-            app,
-            name,
-            Config.GetS3BucketConfig()
-        );
+        const roleStack: IAMRoleStack = new IAMRoleStack(this, name);
+        this.iamRoleARN = roleStack.iamRoleARN;
         return this;
     }
 
@@ -67,8 +31,43 @@ class MyApp extends App {
         return this;
     }
 
+    addWafRuleStack(name: string) {
+        new WafRulesStack(app, name);
+        return this;
+    }
+
+    addWafStack(name: string) {
+        this.wafWebACLStack = new WafWebACLStack(app, name);
+        return this;
+    }
+
+    addLambdaStack(name: string) {
+        const lambdaConfig: any = Config.GetLambdaConfig(name, "plain-print-lambda", this.iamRoleARN!);
+        if (this.vpcStack) {
+            lambdaConfig.vpcConfig = this.getVPCConfig();
+        }
+        this.basicLambdaStack = new BasicLambdaStack(app, name, lambdaConfig);
+        return this;
+    }
+
+    addRestAPIGatewayStack(name: string) {
+        const lambdaFn = this.basicLambdaStack?.lambda?.arn!;
+        new RestAPIGatewayStack(app, name, lambdaFn, this.wafWebACLStack?.wafWebACL.WafWebACL.arn);
+        return this;
+    }
+
+    addS3BucketStack(name: string) {
+        // this.s3BucketStack = new S3BucketStack(
+        //     app,
+        //     name,
+        //     Config.GetS3BucketConfig()
+        // );
+        return this;
+    }
+
+
     addCodeBuildProject(name: string) {
-        new CodebuildStack(app, name, Config.CodeBuildConfig);
+        new CodebuildStack(app, name);
         return this;
     }
 
@@ -78,14 +77,14 @@ class MyApp extends App {
             this.IamRoleStack.iamRole.arn,
         );
         lambdaConfig.vpcConfig = this.getVPCConfig();
-        this.versioningLambda = new BasicLambdaStack(app, name, lambdaConfig);
+        // this.versioningLambda = new BasicLambdaStack(app, name, lambdaConfig);
         return this;
     }
 
     addRestAPIGatewayVersioningStack(name: string) {
         // @ts-ignore
-        const lambdaFn = this.versioningLambda.lambda?.arn!;
-        new RestAPIGatewayStack(app, name, Config.GetApiGatewayConfigVersioning(lambdaFn))
+        // const lambdaFn = this.versioningLambda.lambda?.arn!;
+        // new RestAPIGatewayStack(app, name, Config.GetApiGatewayConfigVersioning(lambdaFn))
         return this;
     }
 
@@ -99,20 +98,6 @@ class MyApp extends App {
         lambdaWithSQSConfig.roleArn = this.IamRoleStack.iamRole!.arn;
         lambdaWithSQSConfig.vpcConfig = this.getVPCConfig();
         new LambdaWithSQSStack(app, name, lambdaWithSQSConfig);
-        return this;
-    }
-
-    addWafRuleStack(name: string) {
-        const ruleStack = new WafRulesStack(app, name, Config.IPBlackListRule)
-        this.wafRules.push(Config.GetWebACLIPBlackListRule(
-            ruleStack.ipSet.arn
-        ));
-        return this;
-    }
-
-    addWafStack(name: string) {
-        this.wafRules.push(Config.GetRateBasedWafRule());
-        this.wafStack = new WafWebACLStack(app, name, Config.GetWebACLConfig(this.wafRules));
         return this;
     }
 
@@ -137,23 +122,22 @@ class MyApp extends App {
 const app = new MyApp();
 app
     .addIamRoleStack("MyIamRoleStack")
-    .addVPCStack("MyVPCStack")
-
-    /** Waf Stack for Blocking IP */
-    .addWafRuleStack("MyWafRuleStack")
-    .addWafStack("MyWafStack")
-
-    .addS3BucketStack("MyS3BucketStack")
-    // .addCodeBuildProject("MyCodeBuildStack")
+    // .addVPCStack("MyVPCStack")
+    //
+    // /** Waf Stack for Blocking IP */
+    .addWafRuleStack("MyIPBlackListWafRule")
+    .addWafStack("MyWafWebACLStack")
+    //
+    // .addS3BucketStack("MyS3BucketStack")
+    .addCodeBuildProject("MyCodeBuildStack")
     // .addLambdaWithSQS("MyLambdaWithSQSStack")
-
-    /** Lambda and Rest API Gateway */
+    //
+    // /** Lambda and Rest API Gateway */
     .addLambdaStack("MyLambdaStack")
-    // .addRestAPIGatewayStack("MyRestAPIGateway")
-
-    /** Lambda and Rest API Gateway with Versioning */
+    .addRestAPIGatewayStack("MyRestAPIGateway")
+    //
+    // /** Lambda and Rest API Gateway with Versioning */
     // .addLambdaWithVersioning("MyVersioningLambda")
     // .addRestAPIGatewayVersioningStack("MyRestAPIGatewayVersioning")
-
 
     .synth();

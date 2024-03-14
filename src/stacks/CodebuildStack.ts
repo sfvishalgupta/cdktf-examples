@@ -1,8 +1,9 @@
 import {Construct} from "constructs";
 import {S3BackendStack} from "arc-cdk";
-import * as aws from "@cdktf/provider-aws"
 import * as Config from "../config";
 import {TerraformOutput} from "cdktf";
+import {Codebuild, ICodebuildProjectConfig} from "../lib"
+import {GetCodeBuildConfig} from "../config";
 
 require("dotenv").config();
 
@@ -10,13 +11,14 @@ export class CodebuildStack extends S3BackendStack {
     /**
      * Codebuild Resource
      */
-    codebuildProject: aws.codebuildProject.CodebuildProject
+    codebuildProject: Codebuild
 
-    constructor(scope: Construct, id: string, config: aws.codebuildProject.CodebuildProjectConfig) {
+    constructor(scope: Construct, id: string) {
         super(scope, id, Config.getS3BackendConfig(id));
-        this.codebuildProject = new aws.codebuildProject.CodebuildProject(this, "cb", config);
+        const props: ICodebuildProjectConfig = Config.GetCodeBuildConfig(id)
+        this.codebuildProject = new Codebuild(this, "code-build", props);
         new TerraformOutput(this, id + "-arn", {
-            value: this.codebuildProject.arn,
+            value: this.codebuildProject.CodebuildProject.arn,
         });
     }
 }

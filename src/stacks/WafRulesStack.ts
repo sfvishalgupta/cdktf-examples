@@ -1,18 +1,13 @@
 import {S3BackendStack} from "arc-cdk";
-import * as aws from "@cdktf/provider-aws"
 import {Construct} from "constructs";
 import * as Config from "../config";
-import {Wafv2IpSetConfig} from "@cdktf/provider-aws/lib/wafv2-ip-set";
+import {WAFIPSet} from "../lib";
 
 export class WafRulesStack extends S3BackendStack {
-    ipSet: aws.wafv2IpSet.Wafv2IpSet;
+    wafRule: WAFIPSet;
 
-    constructor(scope: Construct, id: string, ruleConfig: Wafv2IpSetConfig) {
+    constructor(scope: Construct, id: string) {
         super(scope, id, Config.getS3BackendConfig(id));
-        this.ipSet = new aws.wafv2IpSet.Wafv2IpSet(
-            this,
-            id + '-' + ruleConfig.name,
-            ruleConfig
-        );
+        this.wafRule = new WAFIPSet(this, id + '-waf-ip-set', Config.IPBlackListRule(id));
     }
 }

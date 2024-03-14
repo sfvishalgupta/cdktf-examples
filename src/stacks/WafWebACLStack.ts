@@ -1,23 +1,18 @@
 import {S3BackendStack} from "arc-cdk";
-import * as aws from "@cdktf/provider-aws"
 import {Construct} from "constructs";
 import * as Config from "../config";
-import {Wafv2WebAclConfig} from "@cdktf/provider-aws/lib/wafv2-web-acl";
-import {TerraformOutput} from "cdktf";
-
+import {IWafV2WebAclConfig, WAFIPSet, WafWebACL} from "../lib"
 
 export class WafWebACLStack extends S3BackendStack {
-    webACL: aws.wafv2WebAcl.Wafv2WebAcl;
+    private wafRule: WAFIPSet;
+    wafWebACL: WafWebACL;
 
-    constructor(scope: Construct, id: string, config: Wafv2WebAclConfig) {
+    constructor(scope: Construct, id: string) {
         super(scope, id, Config.getS3BackendConfig(id));
-        this.webACL = new aws.wafv2WebAcl.Wafv2WebAcl(
-            this, id + config.name,
-            config
-        );
-
-        new TerraformOutput(this, id + '-web-acl-arn', {
-            value: this.webACL.arn
-        });
+        this.wafRule = new WAFIPSet(this, id + '-waf-ip-set', Config.IPBlackListRule(id));
+        const cnf: IWafV2WebAclConfig = Config.GetWebACLConfig(id, [
+            Config.GetWebACLIPBlackListRule(id, this.wafRule.ipSet.arn)
+        ]);
+        this.wafWebACL = new WafWebACL(this, id + cnf.name, cnf);
     }
 }
