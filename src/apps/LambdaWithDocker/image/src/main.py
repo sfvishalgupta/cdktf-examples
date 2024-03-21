@@ -1,5 +1,5 @@
 import numpy as np
-
+import json
 
 def handler(event, context):
     arr = np.random.randint(0, 10, (3, 3))

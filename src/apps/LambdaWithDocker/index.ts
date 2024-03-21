@@ -36,8 +36,7 @@ function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): 
                 method: APIGatewayHTTPMethod.GET,
                 lambdaName: lambdaFn!,
                 apiKeyRequired: false,
-                schema: JSON.stringify(listCats),
-                alias: "$latest"
+                schema: JSON.stringify(listCats)
             }],
         }]
     }
