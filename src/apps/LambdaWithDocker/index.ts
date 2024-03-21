@@ -45,7 +45,7 @@ function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): 
 export class LambdaWithDockerApp {
     lambdaWithECR: LambdaWithECR;
 
-    constructor(app: App, name: string) {
+    constructor(app: App, name: string, enableAPI: boolean) {
         this.lambdaWithECR = new LambdaWithECR(app, name, {
             name,
             codePath: resolve(__dirname, './image/'),
@@ -61,10 +61,12 @@ export class LambdaWithDockerApp {
             tags: Config.tags
         });
 
-        new RestAPIGatewayStack(
-            app,
-            name + "-api-gateway",
-            GetApiGatewayConfig(name, this.lambdaWithECR.lambda?.arn!)
-        )
+        if (enableAPI) {
+            new RestAPIGatewayStack(
+                app,
+                name + "-api-gateway",
+                GetApiGatewayConfig(name, this.lambdaWithECR.lambda?.arn!)
+            )
+        }
     }
 }

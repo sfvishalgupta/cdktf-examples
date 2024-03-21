@@ -1,16 +1,13 @@
 import {App} from "cdktf";
-import {
-    BasicLambdaStack,
-    CodebuildStack,
-    IAMRoleStack,
-    LambdaWithSQSStack,
-    RestAPIGatewayStack,
-    VPCStack,
-    WafRulesStack,
-    WafWebACLStack
-} from "./stacks";
+import {BasicLambdaStack, IAMRoleStack, VPCStack, WafRulesStack, WafWebACLStack} from "./stacks";
 import * as Config from "./config";
-import {LambdaWithDockerApp} from "./apps";
+import {
+    CodebuildProjectApp,
+    LambdaWithCustomRoleApp,
+    LambdaWithDockerApp,
+    LambdaWithSQSApp,
+    WAFWebACLApp
+} from "./apps";
 
 require("dotenv").config();
 
@@ -19,14 +16,6 @@ class MyApp extends App {
     private basicLambdaStack: BasicLambdaStack | undefined;
     private vpcStack: VPCStack | undefined;
     private wafWebACLStack: WafWebACLStack | undefined;
-    private iamRoleARN: string | undefined;
-    private lambdaWithDockerECRApp: LambdaWithDockerApp | undefined;
-
-    addIamRoleStack(name: string) {
-        const roleStack: IAMRoleStack = new IAMRoleStack(this, name);
-        this.iamRoleARN = roleStack.iamRoleARN;
-        return this;
-    }
 
     addVPCStack(name: string) {
         this.vpcStack = new VPCStack(app, name, Config.getVPCConfig("vpc"));
@@ -39,24 +28,15 @@ class MyApp extends App {
     }
 
     addWafStack(name: string) {
-        this.wafWebACLStack = new WafWebACLStack(app, name);
+        new WAFWebACLApp(app, name);
         return this;
     }
 
-    addLambdaStack(name: string) {
-        const lambdaConfig: any = Config.GetLambdaConfig(name, "plain-print-lambda", this.iamRoleARN!);
-        if (this.vpcStack) {
-            lambdaConfig.vpcConfig = this.getVPCConfig();
-        }
-        this.basicLambdaStack = new BasicLambdaStack(app, name, lambdaConfig);
+    addLambdaWithCustomRoleApp(name: string) {
+        new LambdaWithCustomRoleApp(app, name, false);
         return this;
     }
 
-    addRestAPIGatewayStack(name: string) {
-        // const lambdaFn = this.basicLambdaStack?.lambda?.arn!;
-        // new RestAPIGatewayStack(app, name, lambdaFn, this.wafWebACLStack?.wafWebACL.wafv2WebACL.arn);
-        return this;
-    }
 
     addS3BucketStack(name: string) {
         // this.s3BucketStack = new S3BucketStack(
@@ -67,9 +47,8 @@ class MyApp extends App {
         return this;
     }
 
-
-    addCodeBuildProject(name: string) {
-        new CodebuildStack(app, name);
+    addCodeBuildProjectApp(name: string) {
+        new CodebuildProjectApp(app, name);
         return this;
     }
 
@@ -94,12 +73,8 @@ class MyApp extends App {
      * Adds a Lambda function with an SQS queue as an event source.
      * @param name - The name of the stack.
      */
-    addLambdaWithSQS(name: string) {
-        const lambdaWithSQSConfig: any = Config.LambdaWithSQSConfig;
-        // @ts-ignore
-        lambdaWithSQSConfig.roleArn = this.IamRoleStack.iamRole!.arn;
-        lambdaWithSQSConfig.vpcConfig = this.getVPCConfig();
-        new LambdaWithSQSStack(app, name, lambdaWithSQSConfig);
+    addLambdaWithSQSApp(name: string) {
+        new LambdaWithSQSApp(app, name);
         return this;
     }
 
@@ -120,33 +95,24 @@ class MyApp extends App {
         };
     }
 
-    addDockerLambdaStack(lambdaName: string) {
-        new LambdaWithDockerApp(app, lambdaName);
+    addDockerLambdaApp(lambdaName: string) {
+        new LambdaWithDockerApp(app, lambdaName, true);
         return this;
     }
 }
 
 const app = new MyApp();
 app
-    // .addIamRoleStack("MyIamRoleStack")
     // .addVPCStack("MyVPCStack")
-    //
     // /** Waf Stack for Blocking IP */
     // .addWafRuleStack("MyIPBlackListWafRule")
-    // .addWafStack("MyWafWebACLStack")
-    //
     // .addS3BucketStack("MyS3BucketStack")
-    // .addCodeBuildProject("MyCodeBuildStack")
-    // .addLambdaWithSQS("MyLambdaWithSQSStack")
-    //
-    // /** Lambda and Rest API Gateway */
-    // .addLambdaStack("MyLambdaStack")
-    // .addRestAPIGatewayStack("MyRestAPIGateway")
-    //
     // /** Lambda and Rest API Gateway with Versioning */
     // .addLambdaWithVersioning("MyVersioningLambda")
     // .addRestAPIGatewayVersioningStack("MyRestAPIGatewayVersioning")
-
-
-    .addDockerLambdaStack("lambda-with-docker")
+    .addWafStack("waf-web-acl")
+    .addCodeBuildProjectApp("codebuild-project")
+    .addLambdaWithCustomRoleApp("lambda-with-custom-role")
+    .addDockerLambdaApp("lambda-with-docker")
+    .addLambdaWithSQSApp("lambda-with-sqs")
     .synth();
