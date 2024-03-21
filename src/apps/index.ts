@@ -1,1 +1,1 @@
-export * from './LambdaWithDockerApp';
+export * from './LambdaWithDocker';

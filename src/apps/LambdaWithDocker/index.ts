@@ -1,7 +1,7 @@
 import {App} from "cdktf";
-import {LambdaWithECR} from "../stacks";
+import {LambdaWithECR} from "../../stacks";
 import {resolve} from "path";
-import * as Config from "../config";
+import * as Config from "../../config";
 
 export class LambdaWithDockerApp {
     lambdaWithECR: LambdaWithECR;
@@ -9,7 +9,7 @@ export class LambdaWithDockerApp {
     constructor(app: App, name: string) {
         this.lambdaWithECR = new LambdaWithECR(app, name, {
             name,
-            codePath: resolve(__dirname, '../../image/'),
+            codePath: resolve(__dirname, '../../../image/'),
             memorySize: 256,
             timeout: 30,
             namespace: process.env.NAMESPACE || '',

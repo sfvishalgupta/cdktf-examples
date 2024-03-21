@@ -7,12 +7,9 @@ import {
     RestAPIGatewayStack,
     VPCStack,
     WafRulesStack,
-    WafWebACLStack,
-    LambdaWithECR
+    WafWebACLStack
 } from "./stacks";
 import * as Config from "./config";
-import {resolve} from "path";
-import {tags} from "./config";
 import {LambdaWithDockerApp} from "./apps";
 
 require("dotenv").config();
@@ -23,7 +20,7 @@ class MyApp extends App {
     private vpcStack: VPCStack | undefined;
     private wafWebACLStack: WafWebACLStack | undefined;
     private iamRoleARN: string | undefined;
-    private lambdaWithDockerECRApp : LambdaWithDockerApp | undefined;
+    private lambdaWithDockerECRApp: LambdaWithDockerApp | undefined;
 
     addIamRoleStack(name: string) {
         const roleStack: IAMRoleStack = new IAMRoleStack(this, name);
@@ -123,9 +120,8 @@ class MyApp extends App {
         };
     }
 
-    addDockerLambdaStack(lambdaName: string){
+    addDockerLambdaStack(lambdaName: string) {
         this.lambdaWithDockerECRApp = new LambdaWithDockerApp(app, lambdaName);
-
         return this;
     }
 }
