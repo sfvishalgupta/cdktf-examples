@@ -23,3 +23,7 @@ export const enum APIGateway_Authorizer {
     AWS_IAM = "AWS_IAM",
     NONE = "NONE",
 }
+
+export const enum APIGateway_UsagePlanKey {
+    API_KEY="API_KEY"
+}

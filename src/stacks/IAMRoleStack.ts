@@ -1,8 +1,7 @@
 import {TerraformOutput} from "cdktf";
-import {S3BackendStack} from "arc-cdk";
+import {S3BackendStack, IAMRole, IIamRole} from "arc-cdk";
 import {Construct} from "constructs";
 import * as Config from "../config";
-import {IAMRole, IIAMRole} from "../lib";
 import * as Utils from "../utils";
 
 export class IAMRoleStack extends S3BackendStack {
@@ -10,7 +9,9 @@ export class IAMRoleStack extends S3BackendStack {
 
     constructor(scope: Construct, id: string) {
         super(scope, id, Config.getS3BackendConfig(id));
-        const config: IIAMRole = {
+        const config: IIamRole = {
+            environment: process.env.ENVIRONMENT!,
+            namespace: process.env.NAMESPACE!,
             iamPolicyConfig: {
                 name: Utils.getResourceName(id + "-iam-policy"),
                 description: "test iam policy for " + id,
@@ -21,7 +22,8 @@ export class IAMRoleStack extends S3BackendStack {
                 name: Utils.getResourceName(id + "-role"),
                 assumeRolePolicy: JSON.stringify(Config.LambdaAssumeRolePolicy),
                 tags: {...Config.tags, StackName: id}
-            }
+            },
+            tags: {...Config.tags, StackName: id}
         }
         const iamRole: IAMRole = new IAMRole(this, id + "iamRole", config);
         this.iamRoleARN = iamRole.iamRole.arn;

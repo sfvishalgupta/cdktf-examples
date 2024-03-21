@@ -1,10 +1,74 @@
-import {S3BackendStack} from "arc-cdk";
+import {
+    APIGatewayAuthorizer,
+    APIGatewayEndPointType,
+    APIGatewayHTTPMethod,
+    APIGatewayLoggingLevel,
+    IRestAPIGatewayConfig,
+    RestApiGateway,
+    S3BackendStack
+} from "arc-cdk";
 import {Construct} from "constructs";
-import {TerraformOutput} from "cdktf";
-import {IRestAPIGatewayConfig, RestApiGateway} from "../lib"
-
+import {TerraformOutput,} from "cdktf";
 import * as Config from "../config";
+import * as listCats from "../schema/listCats.json";
+import {tags} from "../config";
 
+/**
+ * Returns an API Gateway configuration for a REST API with a single endpoint that invokes the specified Lambda function.
+ * @param id
+ * @param lambdaFn - the name of the Lambda function to invoke
+ * @param webAclArn
+ */
+function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): IRestAPIGatewayConfig {
+    return {
+        name: "print-lambda",
+        environment: process.env.ENVIRONMENT!,
+        namespace: process.env.NAMESPACE!,
+        region: process.env.region!,
+        type: APIGatewayEndPointType.REGIONAL,
+        tags: {...Config.tags, StackName: id},
+        description: "Created by cdktf",
+        stageName: "prod",
+        webAclArn,
+        dataTraceEnabled: false,
+        loggingLevel: APIGatewayLoggingLevel.OFF,
+        throttlingBurstLimit: -1,
+        throttlingRateLimit: -1,
+        apiKeyRequired: true,
+        proxyIntegrations: [{
+            name: "Cats",
+            path: "cats",
+            methods: [{
+                name: "listCats",
+                authorization: APIGatewayAuthorizer.NONE,
+                method: APIGatewayHTTPMethod.GET,
+                lambdaName: lambdaFn!,
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats),
+                alias: "$latest"
+            }, {
+                name: "createCat",
+                authorization: APIGatewayAuthorizer.NONE,
+                method: APIGatewayHTTPMethod.POST,
+                lambdaName: lambdaFn,
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats)
+            }],
+        }, {
+            name: "Dogs",
+            path: "dogs",
+            methods: [{
+                name: "listDogs",
+                authorization: APIGatewayAuthorizer.NONE,
+                method: APIGatewayHTTPMethod.GET,
+                lambdaName: lambdaFn!,
+                apiKeyRequired: false,
+                schema: JSON.stringify(listCats),
+                alias: "$latest"
+            }],
+        }]
+    }
+}
 
 /**
  * Creates an API Gateway REST API and its associated resources.
@@ -17,7 +81,7 @@ export class RestAPIGatewayStack extends S3BackendStack {
 
     constructor(scope: Construct, id: string, lambdaARN: string, wafARN?: string) {
         super(scope, id, Config.getS3BackendConfig(id));
-        const config: IRestAPIGatewayConfig = Config.GetApiGatewayConfig(id, lambdaARN, wafARN);
+        const config: IRestAPIGatewayConfig = GetApiGatewayConfig(id, lambdaARN, wafARN);
         this.apiGateway = new RestApiGateway(
             this, id + '-RestAPIGateway', config);
 

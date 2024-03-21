@@ -1,6 +1,6 @@
-export const enum WAF_SCOPE {
-    REGIONAL = "REGIONAL",
-    CLOUDFRONT = "CLOUDFRONT"
+export namespace WAFScope {
+    export const REGIONAL: string = 'REGIONAL';
+    export const CLOUDFRONT: string = 'CLOUDFRONT';
 }
 
 export const enum WAF_AGGREGATE_KEY_TYPE {

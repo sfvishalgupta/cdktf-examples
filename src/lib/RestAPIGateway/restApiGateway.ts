@@ -8,13 +8,17 @@ import {ApiGatewayMethod} from "@cdktf/provider-aws/lib/api-gateway-method";
 import {ApiGatewayModel} from "@cdktf/provider-aws/lib/api-gateway-model";
 import {ApiGatewayResource} from "@cdktf/provider-aws/lib/api-gateway-resource";
 import {ApiGatewayRestApi} from "@cdktf/provider-aws/lib/api-gateway-rest-api";
+import {ApiGatewayApiKey} from "@cdktf/provider-aws/lib/api-gateway-api-key";
+import {ApiGatewayUsagePlan} from "@cdktf/provider-aws/lib/api-gateway-usage-plan";
+import {ApiGatewayUsagePlanKey} from "@cdktf/provider-aws/lib/api-gateway-usage-plan-key";
+import {ApiGatewayStage} from "@cdktf/provider-aws/lib/api-gateway-stage";
 import {LambdaPermission} from "@cdktf/provider-aws/lib/lambda-permission";
 import {Wafv2WebAclAssociation} from "@cdktf/provider-aws/lib/wafv2-web-acl-association";
 
 import {iProxyIntegration, IRestAPIGatewayConfig} from "./interface";
 import * as Utils from "../../utils";
 
-import {APIGateway_HTTPMethod, APIGateway_LoggingLevel} from "./types";
+import {APIGateway_Authorizer, APIGateway_HTTPMethod, APIGateway_LoggingLevel, APIGateway_UsagePlanKey} from "./types";
 
 /* The `export class RestApiGateway` is defining a TypeScript class called `RestApiGateway` that
 extends the `Construct` class. This class is used to create and manage resources related to an API
@@ -28,8 +32,9 @@ export class RestApiGateway extends Construct {
     constructor(scope: Construct, id: string, props: IRestAPIGatewayConfig) {
         super(scope, id);
         this.props = props;
+        props.name = Utils.getResourceName( id + "-" + props.name);
         this.apiGateway = new ApiGatewayRestApi(this, props.name + '-RestAPIGateway', {
-            name: Utils.getResourceName(id + "-" + props.name),
+            name: props.name,
             description: props.description,
             endpointConfiguration: {
                 types: [props.type]
@@ -44,16 +49,23 @@ export class RestApiGateway extends Construct {
         this.deployment = new ApiGatewayDeployment(this, props.name + '-deployment', {
             restApiId: this.apiGateway.id,
             dependsOn: this.dependsOnResource,
-            stageName: this.props.stageName,
             variables: {
                 deployed_at: "${timestamp()}"
             }
         });
 
+        const apiStage = new ApiGatewayStage(this, props.name + '-stage-' + this.props.stageName, {
+            stageName: props.stageName,
+            description: props.stageName,
+            restApiId: this.apiGateway.id,
+            deploymentId: this.deployment.id,
+            dependsOn: [this.deployment]
+        });
+
         new ApiGatewayMethodSettings(this, props.name + '-method-setting', {
             restApiId: this.apiGateway.id,
             methodPath: "*/*",
-            stageName: props.stageName,
+            stageName: apiStage.stageName,
             settings: {
                 dataTraceEnabled: props.dataTraceEnabled || false,
                 loggingLevel: props.loggingLevel || APIGateway_LoggingLevel.OFF,
@@ -61,14 +73,44 @@ export class RestApiGateway extends Construct {
                 throttlingRateLimit: props.throttlingRateLimit || -1,
             },
             dependsOn: [
-                this.deployment
+                apiStage
             ]
+        });
+
+        const apiKey: ApiGatewayApiKey = new ApiGatewayApiKey(this, props.name + '-api-key', {
+            name: props.apiKeyName ?? props.name + '-api-key',
+            description: props.apiKeyName ?? props.name + '-api-key',
+            enabled: props.apiKeyRequired,
+            tags: props.tags
+        });
+
+        const apiKeyUsage: ApiGatewayUsagePlan = new ApiGatewayUsagePlan(this, props.name + '-api-key-usage-plan', {
+            name: this.props.apiKeyUsagePlanName ?? props.name + '-api-key-usage-plan',
+            description: this.props.apiKeyUsagePlanName ?? props.name + '-api-key-usage-plan',
+            apiStages: [{
+                apiId: this.apiGateway.id,
+                stage: apiStage.stageName
+            }],
+            throttleSettings: {
+                burstLimit: props.apiKeyBurstLimit ?? 5000,
+                rateLimit: props.apiKeyRateLimit ?? 10000
+            },
+            dependsOn: [apiStage, apiKey],
+            tags: props.tags,
+        });
+
+        new ApiGatewayUsagePlanKey(this, props.name + '-api-key-usage-plan-key', {
+            keyId: apiKey.id,
+            keyType: APIGateway_UsagePlanKey.API_KEY,
+            usagePlanId: apiKeyUsage.id,
+            dependsOn: [apiKeyUsage],
         });
 
         if (props.webAclArn) {
             new Wafv2WebAclAssociation(this, props.name + '-waf-apigateway-association', {
                 resourceArn: this.apiGateway.arn + '/stages/' + props.stageName,
                 webAclArn: props.webAclArn,
+                dependsOn:[apiStage]
             });
         }
     }
@@ -99,8 +141,8 @@ export class RestApiGateway extends Construct {
             const proxyMethod: ApiGatewayMethod = new ApiGatewayMethod(this, name + '-proxy-method' + obj.name + "-" + method.name, {
                 restApiId: this.apiGateway.id,
                 resourceId: proxy.id,
-                authorization: method.authorization,
-                httpMethod: method.method,
+                authorization: method.authorization ?? APIGateway_Authorizer.NONE,
+                httpMethod: method.method ?? APIGateway_HTTPMethod.ANY,
                 apiKeyRequired: method.apiKeyRequired || false,
             });
             this.dependsOnResource.push(proxyMethod);
@@ -109,7 +151,7 @@ export class RestApiGateway extends Construct {
                 restApiId: this.apiGateway.id,
                 resourceId: proxy.id,
                 statusCode: "200",
-                httpMethod: method.method,
+                httpMethod: method.method ?? APIGateway_HTTPMethod.ANY,
                 responseParameters: {
                     "method.response.header.Access-Control-Allow-Origin": true
                 },

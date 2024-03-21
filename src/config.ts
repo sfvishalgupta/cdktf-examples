@@ -1,5 +1,13 @@
-import {ILambda, ILambdaWithApiGateway, ILambdaWithSqs} from "arc-cdk";
-import {Wafv2WebAclRule} from "@cdktf/provider-aws/lib/wafv2-web-acl/index-structs";
+import {
+    APIGatewayAuthorizer,
+    APIGatewayEndPointType,
+    APIGatewayHTTPMethod,
+    APIGatewayLoggingLevel,
+    ILambda,
+    ILambdaWithApiGateway,
+    ILambdaWithSqs,
+    IRestAPIGatewayConfig
+} from "arc-cdk";
 import {SecurityGroupConfig} from "@cdktf/provider-aws/lib/security-group";
 import {VpcConfig} from "@cdktf/provider-aws/lib/vpc";
 import {S3BucketCorsConfigurationCorsRule} from "@cdktf/provider-aws/lib/s3-bucket-cors-configuration";
@@ -10,25 +18,10 @@ import {S3BackendConfig} from "cdktf";
 import {IAdvancedLambda} from "./interfaces";
 import * as listCats from "./schema/listCats.json";
 import * as Utils from "./utils";
-import {getResourceName} from "./utils";
-import {
-    APIGateway_Authorizer,
-    APIGateway_EndPointType,
-    APIGateway_HTTPMethod,
-    APIGateway_LoggingLevel,
-    ICodebuildProjectConfig,
-    IRestAPIGatewayConfig,
-    IWafv2IpSetConfig,
-    IWafV2WebAclConfig,
-    WAF_AGGREGATE_KEY_TYPE,
-    WAF_SCOPE
-} from "./lib";
 
 require("dotenv").config();
 export const tags: { [key: string]: string } = {
     Team: 'ARC Team',
-    Environment: process.env.ENVIRONMENT!,
-    Namespace: process.env.NAMESPACE!
 }
 
 export const LambdaCustomPolicy = {
@@ -111,61 +104,6 @@ export const LambdaWithSQSConfig: ILambdaWithSqs = {
     tags
 }
 
-export function GetCodeBuildConfig(id: string): ICodebuildProjectConfig {
-    return {
-        name: Utils.getResourceName(id + "-code-build"),
-        description: "My Codebuild Project created by CDKTF",
-        buildTimeout: 60,
-        serviceRole: process.env.SERVICE_ROLE!,
-        source: {
-            type: "S3",
-            location: process.env.SOURCE_BUCKET + process.env.SOURCE_FILE!,
-        },
-        artifacts: {
-            type: "NO_ARTIFACTS"
-        },
-        environment: {
-            computeType: "BUILD_GENERAL1_SMALL",
-            image: "aws/codebuild/amazonlinux2-x86_64-standard:5.0",
-            type: "LINUX_CONTAINER",
-            environmentVariable: [{
-                name: "TARGET_ACCOUNT_REGION",
-                value: process.env.TARGET_ACCOUNT_REGION!
-            }, {
-                name: "TARGET_ACCOUNT_ACCESS_KEY",
-                value: process.env.TARGET_ACCOUNT_ACCESS_KEY!
-            }, {
-                name: "TARGET_ACCOUNT_SECRET_KEY",
-                value: process.env.TARGET_ACCOUNT_SECRET_KEY!
-            }, {
-                name: "SOURCE_ACCOUNT_REGION",
-                value: process.env.SOURCE_ACCOUNT_REGION!
-            }, {
-                name: "SOURCE_ACCOUNT_ACCESS_KEY",
-                value: process.env.SOURCE_ACCOUNT_ACCESS_KEY!
-            }, {
-                name: "SOURCE_ACCOUNT_SECRET_KEY",
-                value: process.env.SOURCE_ACCOUNT_SECRET_KEY!
-            }, {
-                name: "DB_ENDPOINT",
-                value: process.env.DB_ENDPOINT!
-            }, {
-                name: "DB_USERNAME",
-                value: process.env.DB_USERNAME!
-            }, {
-                name: "DB_PASSWORD",
-                value: process.env.DB_PASSWORD!
-            }]
-        },
-        tags,
-        // Optional
-        vpcConfig: {
-            vpcId: process.env.VPC_ID!,
-            subnets: process.env.SUBNETS?.split(",")! || [],
-            securityGroupIds: process.env.SECURITY_GROUP_IDS?.split(",") || []
-        }
-    }
-}
 
 /**
  * Returns a VPC configuration.
@@ -181,103 +119,16 @@ export function getVPCConfig(id: string): VpcConfig {
 }
 
 export const corsRules: S3BucketCorsConfigurationCorsRule[] = [{
-    allowedMethods: [APIGateway_HTTPMethod.GET],
+    allowedMethods: [APIGatewayHTTPMethod.GET],
     allowedOrigins: ["*"],
 }, {
     allowedHeaders: ['*'],
-    allowedMethods: [APIGateway_HTTPMethod.PUT, APIGateway_HTTPMethod.POST],
+    allowedMethods: [APIGatewayHTTPMethod.PUT, APIGatewayHTTPMethod.POST],
     allowedOrigins: ["https://s3-website-test.hashicorp.com"],
     maxAgeSeconds: 3000,
     exposeHeaders: ["ETag"],
 }];
 
-export function IPBlackListRule(id: string): IWafv2IpSetConfig {
-    return {
-        name: getResourceName(id + "-ip-blacklist"),
-        scope: WAF_SCOPE.REGIONAL,
-        ipAddressVersion: "IPV4",
-        addresses: ["122.161.74.216/32"],
-        description: id + " IP blacklisted",
-        tags: {...tags, StackName: id}
-    }
-}
-
-export function GetWebACLIPBlackListRule(id: string, arn: string): Wafv2WebAclRule {
-    return {
-        name: getResourceName(id + "-ip-blacklist"),
-        priority: 1,
-        action: {
-            block: {},
-        },
-        statement: {
-            ipSetReferenceStatement: {
-                arn
-            }
-        },
-        visibilityConfig: {
-            cloudwatchMetricsEnabled: true,
-            metricName: getResourceName(id + "-BlacklistedIP"),
-            sampledRequestsEnabled: true,
-        },
-    }
-}
-
-/**
- * Returns a rate-based WAF rule.
- */
-export function GetRateBasedWafRule(id: string): Wafv2WebAclRule {
-    return {
-        name: getResourceName(id + "-rate-based-waf-rule"),
-        priority: 2,
-        action: {
-            block: {},
-        },
-        statement: {
-            rateBasedStatement: {
-                // The limit defines the number of requests that are allowed within the specified time period.
-                limit: 1000,
-                // The aggregate key type determines how the requests are aggregated. In this case, the IP address is used.
-                aggregateKeyType: WAF_AGGREGATE_KEY_TYPE.IP,
-                // The scope down statement defines the conditions that must be met for the requests to be included in the rule.
-                scopeDownStatement: {
-                    // The geo match statement defines the countries that are allowed to access the resource.
-                    geoMatchStatement: {
-                        countryCodes: ["US"],
-                    },
-                },
-            },
-        },
-        visibilityConfig: {
-            // Enables metrics collection for the rule.
-            cloudwatchMetricsEnabled: true,
-            // The name of the metric.
-            metricName: getResourceName("rate-based-waf-rule-metric"),
-            // Enables sampling of requests for the rule.
-            sampledRequestsEnabled: true,
-        },
-    };
-}
-
-export function GetWebACLConfig(id: string, rules: Wafv2WebAclRule[]): IWafV2WebAclConfig {
-    return {
-        name: getResourceName(id + "-firewall"),
-        scope: WAF_SCOPE.REGIONAL,
-        description: id + " For IP Block",
-        defaultAction: {
-            allow: {},
-        },
-        tags: {...tags, StackName: id},
-        visibilityConfig: {
-            cloudwatchMetricsEnabled: true,
-            metricName: getResourceName("Allowed"),
-            sampledRequestsEnabled: true,
-        },
-        rule: [
-            GetRateBasedWafRule(id),
-            ...rules
-        ],
-    }
-}
 
 /**
  * Returns a security group configuration.
@@ -352,76 +203,25 @@ export function getS3BackendConfig(id: string): S3BackendConfig {
     };
 }
 
-/**
- * Returns an API Gateway configuration for a REST API with a single endpoint that invokes the specified Lambda function.
- * @param id
- * @param lambdaFn - the name of the Lambda function to invoke
- * @param webAclArn
- */
-export function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): IRestAPIGatewayConfig {
-    return {
-        name: "print-lambda",
-        region: process.env.region!,
-        type: APIGateway_EndPointType.REGIONAL,
-        tags: {...tags, StackName: id},
-        description: "Created by cdktf",
-        stageName: "prod",
-        webAclArn,
-        dataTraceEnabled: false,
-        loggingLevel: APIGateway_LoggingLevel.OFF,
-        throttlingBurstLimit: -1,
-        throttlingRateLimit: -1,
-        proxyIntegrations: [{
-            name: "Cats",
-            path: "cats",
-            methods: [{
-                name: "listCats",
-                authorization: APIGateway_Authorizer.NONE,
-                method: APIGateway_HTTPMethod.GET,
-                lambdaName: lambdaFn!,
-                apiKeyRequired: false,
-                schema: JSON.stringify(listCats),
-                alias: "$latest"
-            }, {
-                name: "createCat",
-                authorization: APIGateway_Authorizer.NONE,
-                method: APIGateway_HTTPMethod.POST,
-                lambdaName: lambdaFn,
-                apiKeyRequired: false,
-                schema: JSON.stringify(listCats)
-            }],
-        }, {
-            name: "Dogs",
-            path: "dogs",
-            methods: [{
-                name: "listDogs",
-                authorization: APIGateway_Authorizer.NONE,
-                method: APIGateway_HTTPMethod.GET,
-                lambdaName: lambdaFn!,
-                apiKeyRequired: false,
-                schema: JSON.stringify(listCats),
-                alias: "$latest"
-            }],
-        }]
-    }
-}
 
 export function GetApiGatewayConfigVersioning(lambdaFn: string): IRestAPIGatewayConfig {
     return {
+        environment: process.env.ENVIRONMENT!,
+        namespace: process.env.NAMESPACE!,
         name: "MyRestAPIGatewayVersioning",
         region: process.env.region!,
-        type: APIGateway_EndPointType.REGIONAL,
+        type: APIGatewayEndPointType.REGIONAL,
         tags: tags,
         description: "Created by cdktf versioning",
         stageName: "prod",
-        loggingLevel: APIGateway_LoggingLevel.OFF,
+        loggingLevel: APIGatewayLoggingLevel.OFF,
         proxyIntegrations: [{
             name: "Version1",
             path: "Version1",
             methods: [{
                 name: "listCats",
-                authorization: APIGateway_Authorizer.NONE,
-                method: APIGateway_HTTPMethod.GET,
+                authorization: APIGatewayAuthorizer.NONE,
+                method: APIGatewayHTTPMethod.GET,
                 lambdaName: lambdaFn! + ":Versioning1",
                 apiKeyRequired: false,
                 schema: JSON.stringify(listCats)
@@ -431,8 +231,8 @@ export function GetApiGatewayConfigVersioning(lambdaFn: string): IRestAPIGateway
             path: "Version2",
             methods: [{
                 name: "listDogs",
-                authorization: APIGateway_Authorizer.NONE,
-                method: APIGateway_HTTPMethod.GET,
+                authorization: APIGatewayAuthorizer.NONE,
+                method: APIGatewayHTTPMethod.GET,
                 lambdaName: lambdaFn! + ":Versioning2",
                 apiKeyRequired: false,
                 schema: JSON.stringify(listCats)

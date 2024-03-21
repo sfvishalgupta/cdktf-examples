@@ -7,9 +7,13 @@ import {
     RestAPIGatewayStack,
     VPCStack,
     WafRulesStack,
-    WafWebACLStack
+    WafWebACLStack,
+    LambdaWithECR
 } from "./stacks";
 import * as Config from "./config";
+import {resolve} from "path";
+import {tags} from "./config";
+import {LambdaWithDockerApp} from "./apps";
 
 require("dotenv").config();
 
@@ -19,6 +23,7 @@ class MyApp extends App {
     private vpcStack: VPCStack | undefined;
     private wafWebACLStack: WafWebACLStack | undefined;
     private iamRoleARN: string | undefined;
+    private lambdaWithDockerECRApp : LambdaWithDockerApp | undefined;
 
     addIamRoleStack(name: string) {
         const roleStack: IAMRoleStack = new IAMRoleStack(this, name);
@@ -52,7 +57,7 @@ class MyApp extends App {
 
     addRestAPIGatewayStack(name: string) {
         const lambdaFn = this.basicLambdaStack?.lambda?.arn!;
-        new RestAPIGatewayStack(app, name, lambdaFn, this.wafWebACLStack?.wafWebACL.WafWebACL.arn);
+        new RestAPIGatewayStack(app, name, lambdaFn, this.wafWebACLStack?.wafWebACL.wafv2WebACL.arn);
         return this;
     }
 
@@ -117,27 +122,33 @@ class MyApp extends App {
             ]
         };
     }
+
+    addDockerLambdaStack(lambdaName: string){
+        this.lambdaWithDockerECRApp = new LambdaWithDockerApp(app, lambdaName);
+
+        return this;
+    }
 }
 
 const app = new MyApp();
 app
-    .addIamRoleStack("MyIamRoleStack")
+    // .addIamRoleStack("MyIamRoleStack")
     // .addVPCStack("MyVPCStack")
     //
     // /** Waf Stack for Blocking IP */
-    .addWafRuleStack("MyIPBlackListWafRule")
-    .addWafStack("MyWafWebACLStack")
+    // .addWafRuleStack("MyIPBlackListWafRule")
+    // .addWafStack("MyWafWebACLStack")
     //
     // .addS3BucketStack("MyS3BucketStack")
     // .addCodeBuildProject("MyCodeBuildStack")
     // .addLambdaWithSQS("MyLambdaWithSQSStack")
     //
     // /** Lambda and Rest API Gateway */
-    .addLambdaStack("MyLambdaStack")
-    .addRestAPIGatewayStack("MyRestAPIGateway")
+    // .addLambdaStack("MyLambdaStack")
+    // .addRestAPIGatewayStack("MyRestAPIGateway")
     //
     // /** Lambda and Rest API Gateway with Versioning */
     // .addLambdaWithVersioning("MyVersioningLambda")
     // .addRestAPIGatewayVersioningStack("MyRestAPIGatewayVersioning")
-
+    .addDockerLambdaStack("lambda-with-docker")
     .synth();

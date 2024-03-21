@@ -8,3 +8,4 @@ export * from './S3Stack';
 export * from './VPCStack';
 export * from './WafRulesStack';
 export * from './WafWebACLStack';
+export * from './LambdaWithECR';

@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@cdktf/provider-random": "^6.0.0",
-    "arc-cdk": "^0.0.14",
+    "arc-cdk": "file:../../../../../../var/www/Sourcefuse/arc-cdk/arc-cdk-5.0.0.tgz",
     "cdktf": "^0.15.3",
     "constructs": "10.3.0",
     "dotenv": "16.4.4"
