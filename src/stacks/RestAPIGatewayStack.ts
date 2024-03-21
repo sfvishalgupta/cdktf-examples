@@ -19,56 +19,56 @@ import {tags} from "../config";
  * @param lambdaFn - the name of the Lambda function to invoke
  * @param webAclArn
  */
-function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): IRestAPIGatewayConfig {
-    return {
-        name: "print-lambda",
-        environment: process.env.ENVIRONMENT!,
-        namespace: process.env.NAMESPACE!,
-        region: process.env.region!,
-        type: APIGatewayEndPointType.REGIONAL,
-        tags: {...Config.tags, StackName: id},
-        description: "Created by cdktf",
-        stageName: "prod",
-        webAclArn,
-        dataTraceEnabled: false,
-        loggingLevel: APIGatewayLoggingLevel.OFF,
-        throttlingBurstLimit: -1,
-        throttlingRateLimit: -1,
-        apiKeyRequired: true,
-        proxyIntegrations: [{
-            name: "Cats",
-            path: "cats",
-            methods: [{
-                name: "listCats",
-                authorization: APIGatewayAuthorizer.NONE,
-                method: APIGatewayHTTPMethod.GET,
-                lambdaName: lambdaFn!,
-                apiKeyRequired: false,
-                schema: JSON.stringify(listCats),
-                alias: "$latest"
-            }, {
-                name: "createCat",
-                authorization: APIGatewayAuthorizer.NONE,
-                method: APIGatewayHTTPMethod.POST,
-                lambdaName: lambdaFn,
-                apiKeyRequired: false,
-                schema: JSON.stringify(listCats)
-            }],
-        }, {
-            name: "Dogs",
-            path: "dogs",
-            methods: [{
-                name: "listDogs",
-                authorization: APIGatewayAuthorizer.NONE,
-                method: APIGatewayHTTPMethod.GET,
-                lambdaName: lambdaFn!,
-                apiKeyRequired: false,
-                schema: JSON.stringify(listCats),
-                alias: "$latest"
-            }],
-        }]
-    }
-}
+// function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): IRestAPIGatewayConfig {
+//     return {
+//         name: "print-lambda",
+//         environment: process.env.ENVIRONMENT!,
+//         namespace: process.env.NAMESPACE!,
+//         region: process.env.region!,
+//         type: APIGatewayEndPointType.REGIONAL,
+//         tags: {...Config.tags, StackName: id},
+//         description: "Created by cdktf",
+//         stageName: "prod",
+//         webAclArn,
+//         dataTraceEnabled: false,
+//         loggingLevel: APIGatewayLoggingLevel.OFF,
+//         throttlingBurstLimit: -1,
+//         throttlingRateLimit: -1,
+//         apiKeyRequired: true,
+//         proxyIntegrations: [{
+//             name: "Cats",
+//             path: "cats",
+//             methods: [{
+//                 name: "listCats",
+//                 authorization: APIGatewayAuthorizer.NONE,
+//                 method: APIGatewayHTTPMethod.GET,
+//                 lambdaName: lambdaFn!,
+//                 apiKeyRequired: false,
+//                 schema: JSON.stringify(listCats),
+//                 alias: "$latest"
+//             }, {
+//                 name: "createCat",
+//                 authorization: APIGatewayAuthorizer.NONE,
+//                 method: APIGatewayHTTPMethod.POST,
+//                 lambdaName: lambdaFn,
+//                 apiKeyRequired: false,
+//                 schema: JSON.stringify(listCats)
+//             }],
+//         }, {
+//             name: "Dogs",
+//             path: "dogs",
+//             methods: [{
+//                 name: "listDogs",
+//                 authorization: APIGatewayAuthorizer.NONE,
+//                 method: APIGatewayHTTPMethod.GET,
+//                 lambdaName: lambdaFn!,
+//                 apiKeyRequired: false,
+//                 schema: JSON.stringify(listCats),
+//                 alias: "$latest"
+//             }],
+//         }]
+//     }
+// }
 
 /**
  * Creates an API Gateway REST API and its associated resources.
@@ -79,9 +79,8 @@ function GetApiGatewayConfig(id: string, lambdaFn: string, webAclArn?: string): 
 export class RestAPIGatewayStack extends S3BackendStack {
     private apiGateway: RestApiGateway;
 
-    constructor(scope: Construct, id: string, lambdaARN: string, wafARN?: string) {
+    constructor(scope: Construct, id: string, config: IRestAPIGatewayConfig, wafARN?: string) {
         super(scope, id, Config.getS3BackendConfig(id));
-        const config: IRestAPIGatewayConfig = GetApiGatewayConfig(id, lambdaARN, wafARN);
         this.apiGateway = new RestApiGateway(
             this, id + '-RestAPIGateway', config);
 

@@ -53,8 +53,8 @@ class MyApp extends App {
     }
 
     addRestAPIGatewayStack(name: string) {
-        const lambdaFn = this.basicLambdaStack?.lambda?.arn!;
-        new RestAPIGatewayStack(app, name, lambdaFn, this.wafWebACLStack?.wafWebACL.wafv2WebACL.arn);
+        // const lambdaFn = this.basicLambdaStack?.lambda?.arn!;
+        // new RestAPIGatewayStack(app, name, lambdaFn, this.wafWebACLStack?.wafWebACL.wafv2WebACL.arn);
         return this;
     }
 
@@ -121,7 +121,7 @@ class MyApp extends App {
     }
 
     addDockerLambdaStack(lambdaName: string) {
-        this.lambdaWithDockerECRApp = new LambdaWithDockerApp(app, lambdaName);
+        new LambdaWithDockerApp(app, lambdaName);
         return this;
     }
 }
@@ -146,5 +146,7 @@ app
     // /** Lambda and Rest API Gateway with Versioning */
     // .addLambdaWithVersioning("MyVersioningLambda")
     // .addRestAPIGatewayVersioningStack("MyRestAPIGatewayVersioning")
+
+
     .addDockerLambdaStack("lambda-with-docker")
     .synth();
