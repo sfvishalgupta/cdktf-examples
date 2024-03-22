@@ -5,7 +5,6 @@ import {
     APIGatewayLoggingLevel,
     ILambda,
     ILambdaWithApiGateway,
-    ILambdaWithSqs,
     IRestAPIGatewayConfig
 } from "arc-cdk";
 import {SecurityGroupConfig} from "@cdktf/provider-aws/lib/security-group";
@@ -78,8 +77,6 @@ export const lambdaWithApiGatewayConfig: ILambdaWithApiGateway = {
     },
     tags,
 }
-
-
 
 
 /**
