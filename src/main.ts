@@ -1,11 +1,13 @@
 import {App} from "cdktf";
-import {BasicLambdaStack, IAMRoleStack, VPCStack, WafWebACLStack} from "./stacks";
+import {VPCStack} from "./stacks";
 import * as Config from "./config";
 import {
     CodebuildProjectApp,
     LambdaWithCustomRoleApp,
     LambdaWithDockerApp,
     LambdaWithSQSApp,
+    S3BucketWithSyncDirApp,
+    S3BucketWithZipContentApp,
     WAFWebACLApp
 } from "./apps";
 
@@ -15,22 +17,22 @@ class MyApp extends App {
     private vpcStack: VPCStack | undefined;
 
     addVPCStack(name: string) {
-        this.vpcStack = new VPCStack(app, name, Config.getVPCConfig("vpc"));
+        this.vpcStack = new VPCStack(this, name, Config.getVPCConfig("vpc"));
         return this;
     }
 
     addWafStack(name: string) {
-        new WAFWebACLApp(app, name);
+        new WAFWebACLApp(this, name);
         return this;
     }
 
     addLambdaWithCustomRoleApp(name: string) {
-        new LambdaWithCustomRoleApp(app, name, false);
+        new LambdaWithCustomRoleApp(this, name, false);
         return this;
     }
 
     addCodeBuildProjectApp(name: string) {
-        new CodebuildProjectApp(app, name);
+        new CodebuildProjectApp(this, name);
         return this;
     }
 
@@ -39,7 +41,7 @@ class MyApp extends App {
      * @param name - The name of the stack.
      */
     addLambdaWithSQSApp(name: string) {
-        new LambdaWithSQSApp(app, name);
+        new LambdaWithSQSApp(this, name);
         return this;
     }
 
@@ -61,7 +63,17 @@ class MyApp extends App {
     }
 
     addDockerLambdaApp(lambdaName: string) {
-        new LambdaWithDockerApp(app, lambdaName, true);
+        new LambdaWithDockerApp(this, lambdaName, true);
+        return this;
+    }
+
+    addS3BucketWithSyncDirApp(name: string) {
+        new S3BucketWithSyncDirApp(this, name);
+        return this;
+    }
+
+    addS3BucketWithSyncZipContent(name: string) {
+        new S3BucketWithZipContentApp(this, name);
         return this;
     }
 }
@@ -73,4 +85,6 @@ app
     .addLambdaWithCustomRoleApp("lambda-with-custom-role")
     .addDockerLambdaApp("lambda-with-docker")
     .addLambdaWithSQSApp("lambda-with-sqs")
+    .addS3BucketWithSyncDirApp("s3-bucket-sync-dir")
+    .addS3BucketWithSyncZipContent("s3-bucket-sync-zip-content")
     .synth();

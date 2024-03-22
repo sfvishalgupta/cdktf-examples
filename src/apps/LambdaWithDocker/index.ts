@@ -62,10 +62,7 @@ export class LambdaWithDockerApp {
         });
 
         if (enableAPI) {
-            new RestAPIGatewayStack(
-                app,
-                name + "-api-gateway",
-                GetApiGatewayConfig(name, this.lambdaWithECR.lambda?.arn!)
+            new RestAPIGatewayStack(app, name + "-api-gateway", GetApiGatewayConfig(name, this.lambdaWithECR.lambda?.arn!)
             )
         }
     }
