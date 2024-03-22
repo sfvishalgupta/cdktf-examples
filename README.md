@@ -20,5 +20,6 @@ npm run destroy '*'
 * [Lambda with VPC](./src/apps/LambdaWithVPC/README.md)
 * [Lambda with Versioning & Alias](./src/apps/LambdaWithVersionAndAlias/README.md)
 * [S3 Bucket with Sync Directory](./src/apps/S3BucketWithSyncDir/README.md)
+* [S3 Bucket with CORS Rules](./src/apps/S3BucketWithCORSRules/README.md)
 * [S3 Bucket with ZIP Content](./src/apps/S3BucketWithZipContent/README.md)
 * [WAF Web ACL](./src/apps/WAFWebACL/README.md)

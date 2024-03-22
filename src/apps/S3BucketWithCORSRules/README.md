@@ -1,4 +1,4 @@
-## S3 Bucket with Sync Directory
+## S3 Bucket with CORS Rules
 
 ```javascript
 export class S3BucketWithCORSRulesApp {
