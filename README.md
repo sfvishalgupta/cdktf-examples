@@ -1,9 +1,15 @@
-## CDKTF Example
+# [CDKTF Example](https://github.com/sfvishalgupta/cdktf-examples)
+
+## Build & Deploy
 
 ```shell
 npm install
+npm run build
+npm run deploy '*'
+npm run destroy '*'
 ```
 
+## List of Examples 
 
 * [Codebuild Project](./src/apps/CodebuildProject/README.md)
 * [Lambda with Custom Role](./src/apps/LambdaWithCustomRole/README.md)
@@ -14,3 +20,5 @@ npm install
 * [Lambda with VPC](./src/apps/LambdaWithVPC/README.md)
 * [Lambda with Versioning & Alias](./src/apps/LambdaWithVersionAndAlias/README.md)
 * [WAF Web ACL](./src/apps/WAFWebACL/README.md)
+* [S3 Bucket with ZIP Content](./src/apps/S3BucketWithZipContent/README.md)
+* [S3 Bucket with Sync Directory](./src/apps/S3BucketWithSyncDir/README.md)
