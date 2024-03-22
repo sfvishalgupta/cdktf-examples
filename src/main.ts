@@ -5,7 +5,8 @@ import {
     CodebuildProjectApp,
     LambdaWithCustomRoleApp,
     LambdaWithDockerApp,
-    LambdaWithSQSApp, S3BucketWithCORSRulesApp,
+    LambdaWithSQSApp,
+    S3BucketWithCORSRulesApp,
     S3BucketWithSyncDirApp,
     S3BucketWithZipContentApp,
     WAFWebACLApp
@@ -62,8 +63,8 @@ class MyApp extends App {
         };
     }
 
-    addDockerLambdaApp(lambdaName: string) {
-        new LambdaWithDockerApp(this, lambdaName, true);
+    addDockerLambdaApp(name: string) {
+        new LambdaWithDockerApp(this, name, true);
         return this;
     }
 
@@ -81,17 +82,16 @@ class MyApp extends App {
         new S3BucketWithCORSRulesApp(this, name);
         return this;
     }
-
 }
 
 const app = new MyApp();
 app
-    // .addWafStack("waf-web-acl")
-    // .addCodeBuildProjectApp("codebuild-project")
-    // .addLambdaWithCustomRoleApp("lambda-with-custom-role")
-    // .addDockerLambdaApp("lambda-with-docker")
-    // .addLambdaWithSQSApp("lambda-with-sqs")
-    // .addS3BucketWithSyncDirApp("s3-bucket-sync-dir")
-    // .addS3BucketWithSyncZipContent("s3-bucket-sync-zip-content")
+    .addWafStack("waf-web-acl")
+    .addCodeBuildProjectApp("codebuild-project")
+    .addLambdaWithCustomRoleApp("lambda-with-custom-role")
+    .addDockerLambdaApp("lambda-with-docker")
+    .addLambdaWithSQSApp("lambda-with-sqs")
+    .addS3BucketWithSyncDirApp("s3-bucket-sync-dir")
+    .addS3BucketWithSyncZipContent("s3-bucket-sync-zip-content")
     .addS3BucketWithCORSRules("s3-bucket-cors-rules")
     .synth();

@@ -92,17 +92,6 @@ export function getVPCConfig(id: string): VpcConfig {
     };
 }
 
-export const corsRules: S3BucketCorsConfigurationCorsRule[] = [{
-    allowedMethods: [APIGatewayHTTPMethod.GET],
-    allowedOrigins: ["*"],
-}, {
-    allowedHeaders: ['*'],
-    allowedMethods: [APIGatewayHTTPMethod.PUT, APIGatewayHTTPMethod.POST],
-    allowedOrigins: ["https://s3-website-test.hashicorp.com"],
-    maxAgeSeconds: 3000,
-    exposeHeaders: ["ETag"],
-}];
-
 
 /**
  * Returns a security group configuration.
